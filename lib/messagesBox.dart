@@ -10,9 +10,9 @@ class MessageBox extends StatelessWidget{
     return Container(
       child: ListView.builder(
         scrollDirection: Axis.vertical,
-        itemCount: 5, // messages.count
+        itemCount: commState.messages.length, // messages.count
         itemBuilder: (BuildContext context, int index){
-          return Text("Message"); // sau messages[index].text( alte chestii: time,user,idk)
+          return Text(commState.messages[index].text); // sau messages[index].text( alte chestii: time,user,idk)
         },
       ),
     );
