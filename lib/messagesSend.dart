@@ -4,8 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:chat_app/commState.dart';
 import 'package:chat_app/models/message.dart';
 
-class MessageSend extends StatelessWidget{
-
+class MessageSend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final commState = Provider.of<CommState>(context);
@@ -13,19 +12,20 @@ class MessageSend extends StatelessWidget{
     return Row(
       children: [
         Expanded(
-            child: TextField(
-              decoration: InputDecoration(hintText: 'Aa'),
-              controller: textEditing,
-            ),
+          child: TextField(
+            decoration: InputDecoration(hintText: 'Aa'),
+            controller: textEditing,
+          ),
         ),
         IconButton(
-            onPressed: () {
-              commState.sendMessage(Message('Me', '00:00', textEditing.text));
-            },
-            icon: Icon(Icons.accessible_forward_rounded),
+          onPressed: () {
+            //commState.sendMessage(Message('Me', '00:00', textEditing.text));
+            commState.sendMessageDatagramSocket(
+                Message('Me', '00:00', textEditing.text));
+          },
+          icon: Icon(Icons.accessible_forward_rounded),
         ),
       ],
     );
   }
-
 }
