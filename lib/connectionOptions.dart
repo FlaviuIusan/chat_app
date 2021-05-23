@@ -11,7 +11,6 @@ class Options extends StatelessWidget {
     final commState = Provider.of<CommState>(context);
     final textControllerIp = TextEditingController();
     final textControllerPort = TextEditingController();
-    final InternetAddress x = InternetAddress.anyIPv4;
     return Column(
       children: <Widget>[
         TextField(

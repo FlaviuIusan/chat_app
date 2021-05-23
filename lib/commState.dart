@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -31,6 +32,12 @@ class CommState with ChangeNotifier {
   //cu anycast este nevoie de o tabela de rutare la fiecare client? cum se diferentiaza Ip-urile dintre 2 hotSpo? cum se descopera clientii intre ei si intre hotSpo
   //diferite?
 
+  //multicast_dns package iterate over network interfaces ex: You can see an example of how to enumerate the interfaces and listen on the first address the interface uses and make sure you're joining multicast on that interface here: https://github.com/flutter/packages/blob/master/packages/multicast_dns/lib/multicast_dns.dart#L121-L152
+  //wlan0 e interfata network pe android care se conecteaza la hotSpots(network prin wireless) sau care creeaza hotSpot
+  //p2p-p2p0p0 e interfata network pe android care o foloseste pentru a creea hotSpot cand este deja conectat la un network prin wlan0
+  //la windows Wi-Fi e interfata cu care se conecteaza, Local Area Connection* 3 pe care face hotSpot si Ethernet cu care se conecteaza prin cablu eth.
+  // rezolvare: creez socket pentru toate interfetele , joinMulticast, send Datagram Hello si daca primesc raspuns inapoi atunci pastrez socket-ul altfel il inchid.
+
   set stateSecureSocket(Socket socket) {
     this.socket = socket;
     //notifyListeners();
@@ -53,14 +60,35 @@ class CommState with ChangeNotifier {
     this.datagramSocket = datagramSocket;
   }
 
-  void listenDatagramSocket() {
+  Future<Iterable<NetworkInterface>> allInterfacesFactory(
+      InternetAddressType type) {
+    return NetworkInterface.list(
+      includeLinkLocal: true,
+      type: type,
+      includeLoopback: true,
+    );
+  }
+
+  void listenDatagramSocket() async {
     this.datagramSocket?.joinMulticast(this.multicastAddress);
+
+    final List<NetworkInterface> interfaces =
+        (await allInterfacesFactory(InternetAddressType.IPv4)).toList();
+
+    for (final NetworkInterface interface in interfaces) {
+      inspect(interface);
+    }
+
+    //inspect(this.datagramSocket);
+
     this.datagramSocket?.listen((RawSocketEvent e) {
       Datagram? datagram = this.datagramSocket?.receive();
-      if (datagram == null) return;
-      messages.add(
-          Message('SomeoneElse', '00:00', String.fromCharCodes(datagram.data)));
-      notifyListeners();
+      if (datagram != null) {
+        messages.add(Message(
+            'SomeoneElse', '00:00', String.fromCharCodes(datagram.data)));
+        notifyListeners();
+      }
+      log("ascult");
     });
   }
 
