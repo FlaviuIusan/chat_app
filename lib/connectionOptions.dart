@@ -27,9 +27,7 @@ class Options extends StatelessWidget {
                 textControllerIp.text, int.parse(textControllerPort.text));
             commState.listenMessage();
             */
-            commState.stateDatagramSocket =
-                await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-            commState.listenDatagramSocket();
+            commState.connectToMulticastGroup();
           },
           icon: Icon(Icons.connect_without_contact),
         ),

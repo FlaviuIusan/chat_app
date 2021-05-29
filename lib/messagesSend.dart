@@ -20,7 +20,7 @@ class MessageSend extends StatelessWidget {
         IconButton(
           onPressed: () {
             //commState.sendMessage(Message('Me', '00:00', textEditing.text));
-            commState.sendMessageDatagramSocket(
+            commState.sendMessageMulticastGroup(
                 Message('Me', '00:00', textEditing.text));
           },
           icon: Icon(Icons.accessible_forward_rounded),

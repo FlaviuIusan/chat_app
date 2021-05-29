@@ -4,15 +4,17 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:chat_app/models/message.dart';
+import 'package:flutter/services.dart';
+import 'dart:async';
 
 class CommState with ChangeNotifier {
   Socket? socket; // vezi SecureSocket
-  RawDatagramSocket? datagramSocket;
-  final InternetAddress multicastAddress = InternetAddress("239.10.10.100");
-  final int multicastPort = 4545;
+  List<RawDatagramSocket> socketsSendMulticast = <RawDatagramSocket>[];
+  List<RawDatagramSocket> socketsListenMulticast = <RawDatagramSocket>[];
+  InternetAddress multicastGroupAddress = InternetAddress("239.255.27.99");
+  int multicastGroupPort = 27399;
 
-  List<Message> messages =
-      []; //pe viitor in alt state, sunt necesare doar in screen-urile cu chat
+  List<Message> messages = []; //pe viitor in alt state, sunt necesare doar in screen-urile cu chat
   //lista de conectiuni posibile(available users)| pot verifica si doar cu 3 device-uri: pc-ul connectat la hotSpo huawei -->(send hello) pe broadcastul network-ului
   //huawei, huawei e client in network-ul lui(prima adresa o are) si raspunde inapoi la PC(pc-ul vede huawei-ul)+ huawei connectat la hotSpo lenovo atunci transmite
   // hello-ul PC-ului si pe network-ul lenovo-lui unde lenovo e client in network-ul lui(prima adresa o are) si raspunde inapoi la huawei si huawei raspunde la PC
@@ -36,7 +38,19 @@ class CommState with ChangeNotifier {
   //wlan0 e interfata network pe android care se conecteaza la hotSpots(network prin wireless) sau care creeaza hotSpot
   //p2p-p2p0p0 e interfata network pe android care o foloseste pentru a creea hotSpot cand este deja conectat la un network prin wlan0
   //la windows Wi-Fi e interfata cu care se conecteaza, Local Area Connection* 3 pe care face hotSpot si Ethernet cu care se conecteaza prin cablu eth.
+  //la lenovo wp0 la hotspot si wlan0 cand e conectat la wi-fi || wlan0 si p2p0 cand ambele activate
   // rezolvare: creez socket pentru toate interfetele , joinMulticast, send Datagram Hello si daca primesc raspuns inapoi atunci pastrez socket-ul altfel il inchid.
+
+  //nu merge oricum, nu se adauga ruta, can trimit mesajul la multicast group device-ul nu stie unde sa trimita ? // de incercat cu openVPN addroute (Api Android)
+  //-> ???? https://stackoverflow.com/questions/13221736/android-device-not-receiving-multicast-package IPv4 multicast support in android is poorely implemented. There are bugs from cupcake era still present.
+
+  //de verificat pachetele cu wireshark
+
+  //de incercat cu IPv6
+
+  //fiecare client sa aiba un serverUDPsocket si sa primeasca acolo de la oricine mesaje, fiecare client face public port si ip la serveru sau
+
+  static const platform = const MethodChannel('first.flaviu.dev/multicastLock');
 
   set stateSecureSocket(Socket socket) {
     this.socket = socket;
@@ -56,12 +70,7 @@ class CommState with ChangeNotifier {
     });
   }
 
-  set stateDatagramSocket(RawDatagramSocket datagramSocket) {
-    this.datagramSocket = datagramSocket;
-  }
-
-  Future<Iterable<NetworkInterface>> allInterfacesFactory(
-      InternetAddressType type) {
+  Future<Iterable<NetworkInterface>> allInterfacesFactory(InternetAddressType type) {
     return NetworkInterface.list(
       includeLinkLocal: true,
       type: type,
@@ -69,33 +78,101 @@ class CommState with ChangeNotifier {
     );
   }
 
-  void listenDatagramSocket() async {
-    this.datagramSocket?.joinMulticast(this.multicastAddress);
-
-    final List<NetworkInterface> interfaces =
-        (await allInterfacesFactory(InternetAddressType.IPv4)).toList();
-
-    for (final NetworkInterface interface in interfaces) {
-      inspect(interface);
+  void connectToMulticastGroup() async {
+    //listen cu un singur socket pe toate interfetele?
+    //send trebuie pentru fiecare separat.
+    //lock pentru android
+    if (Platform.isAndroid) {
+      var multicastLock = await platform.invokeMethod('multicastLock');
+      print(multicastLock.toString());
     }
 
-    //inspect(this.datagramSocket);
+    List<NetworkInterface> interfaces = (await allInterfacesFactory(InternetAddressType.IPv4)).toList();
 
-    this.datagramSocket?.listen((RawSocketEvent e) {
-      Datagram? datagram = this.datagramSocket?.receive();
-      if (datagram != null) {
-        messages.add(Message(
-            'SomeoneElse', '00:00', String.fromCharCodes(datagram.data)));
-        notifyListeners();
+    for (final NetworkInterface interface in interfaces) {
+      try {
+        InternetAddress interfaceAddress = interface.addresses[0];
+        print(interfaceAddress.address.toString());
+        RawDatagramSocket socket = await RawDatagramSocket.bind(
+          interfaceAddress,
+          0,
+          reuseAddress: true,
+          reusePort: false,
+          ttl: 255,
+        );
+        socket.setRawOption(RawSocketOption(
+          RawSocketOption.levelIPv4,
+          RawSocketOption.IPv4MulticastInterface,
+          interfaceAddress.rawAddress,
+        ));
+        socketsSendMulticast.add(socket);
+
+        RawDatagramSocket listenMulticastSocket = await RawDatagramSocket.bind(interfaceAddress, 0, reuseAddress: true, reusePort: false, ttl: 255);
+        listenMulticastSocket.setRawOption(RawSocketOption(
+          RawSocketOption.levelIPv4,
+          RawSocketOption.IPv4MulticastInterface,
+          interfaceAddress.rawAddress,
+        ));
+        try {
+          listenMulticastSocket.joinMulticast(this.multicastGroupAddress, interface);
+        } catch (e) {
+          log("joinMulticast:" + e.toString());
+        }
+        socketsListenMulticast.add(listenMulticastSocket);
+      } catch (e) {
+        print(e.toString());
       }
-      log("ascult");
-    });
+    }
+
+    for (final RawDatagramSocket socket in this.socketsListenMulticast) {
+      //socket.readEventsEnabled = true;
+      // listenMulticastSocket.broadcastEnabled = true;
+      socket.listen((RawSocketEvent event) {
+        log("listenBeforeEvent " + event.toString() + " " + socket.readEventsEnabled.toString());
+        if (event == RawSocketEvent.read) {
+          final datagramPacket = socket.receive();
+          if (datagramPacket == null) return;
+          if (String.fromCharCodes(datagramPacket.data) == "ping") sendMessageMulticastGroup(Message("eu", "00:00", "ping ack"));
+          print(datagramPacket.data);
+          messages.add(Message('SomeoneElse', '00:00', String.fromCharCodes(datagramPacket.data)));
+          notifyListeners();
+        }
+      });
+    }
   }
 
-  void sendMessageDatagramSocket(Message message) {
-    this.datagramSocket?.send(
-        message.text.codeUnits, this.multicastAddress, this.multicastPort);
+  void sendMessageMulticastGroup(Message message) {
+    for (final RawDatagramSocket socket in this.socketsSendMulticast) {
+      socket.writeEventsEnabled = true;
+      try {
+        socket.send(message.text.codeUnits, this.multicastGroupAddress, this.multicastGroupPort);
+      } catch (e) {
+        print(e.toString());
+      }
+      print("Message send from" +
+          socket.address.toString() +
+          " : " +
+          socket.port.toString() +
+          "writeThisSocket:" +
+          socket.writeEventsEnabled.toString() +
+          " readListenSocket: " +
+          this.socketsListenMulticast[0].readEventsEnabled.toString() +
+          " ipListenSocket0:" +
+          this.socketsListenMulticast[0].address.toString() +
+          " ipListenSocket1:" +
+          this.socketsListenMulticast[1].address.toString());
+    }
     messages.add(message);
     notifyListeners();
+  }
+
+  void handleListen(RawSocketEvent event, RawDatagramSocket listenMulticastSocket) {
+    if (event == RawSocketEvent.read) {
+      Datagram? datagram = listenMulticastSocket.receive();
+      if (datagram == null) return;
+      messages.add(Message('SomeoneElse', '00:00', String.fromCharCodes(datagram.data)));
+      notifyListeners();
+      log("ascult");
+    }
   }
 }
