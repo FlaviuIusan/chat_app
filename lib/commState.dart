@@ -10,7 +10,7 @@ import 'dart:async';
 class CommState with ChangeNotifier {
   Socket? socket; // vezi SecureSocket
   List<RawDatagramSocket> socketsSendMulticast = <RawDatagramSocket>[];
-  List<RawDatagramSocket> socketsListenMulticast = <RawDatagramSocket>[];
+  RawDatagramSocket? socketListenMulticast;
   InternetAddress multicastGroupAddress = InternetAddress("239.255.27.99");
   int multicastGroupPort = 27399;
 
@@ -48,7 +48,9 @@ class CommState with ChangeNotifier {
 
   //de incercat cu IPv6
 
-  //fiecare client sa aiba un serverUDPsocket si sa primeasca acolo de la oricine mesaje, fiecare client face public port si ip la serveru sau
+  //fiecare client sa aiba un serverUDPsocket si sa primeasca acolo de la oricine mesaje, fiecare client face public port si ip la serveru sau (ce?)
+
+  //pai daca nu ascult pe acelasi port pe care se trimit mesajele atunci cum sa le primesc... ggwp
 
   static const platform = const MethodChannel('first.flaviu.dev/multicastLock');
 
@@ -87,6 +89,8 @@ class CommState with ChangeNotifier {
       print(multicastLock.toString());
     }
 
+    socketListenMulticast = await RawDatagramSocket.bind(InternetAddress.anyIPv4, multicastGroupPort, reuseAddress: true, reusePort: false, ttl: 255);
+
     List<NetworkInterface> interfaces = (await allInterfacesFactory(InternetAddressType.IPv4)).toList();
 
     for (final NetworkInterface interface in interfaces) {
@@ -107,38 +111,26 @@ class CommState with ChangeNotifier {
         ));
         socketsSendMulticast.add(socket);
 
-        RawDatagramSocket listenMulticastSocket = await RawDatagramSocket.bind(interfaceAddress, 0, reuseAddress: true, reusePort: false, ttl: 255);
-        listenMulticastSocket.setRawOption(RawSocketOption(
-          RawSocketOption.levelIPv4,
-          RawSocketOption.IPv4MulticastInterface,
-          interfaceAddress.rawAddress,
-        ));
-        try {
-          listenMulticastSocket.joinMulticast(this.multicastGroupAddress, interface);
-        } catch (e) {
-          log("joinMulticast:" + e.toString());
-        }
-        socketsListenMulticast.add(listenMulticastSocket);
+        socketListenMulticast?.joinMulticast(this.multicastGroupAddress, interface);
       } catch (e) {
         print(e.toString());
       }
     }
 
-    for (final RawDatagramSocket socket in this.socketsListenMulticast) {
-      //socket.readEventsEnabled = true;
-      // listenMulticastSocket.broadcastEnabled = true;
-      socket.listen((RawSocketEvent event) {
-        log("listenBeforeEvent " + event.toString() + " " + socket.readEventsEnabled.toString());
-        if (event == RawSocketEvent.read) {
-          final datagramPacket = socket.receive();
-          if (datagramPacket == null) return;
+    //socket.readEventsEnabled = true;
+    // listenMulticastSocket.broadcastEnabled = true;
+    socketListenMulticast?.listen((RawSocketEvent event) {
+      log("listenBeforeEvent " + event.toString());
+      if (event == RawSocketEvent.read) {
+        final datagramPacket = socketListenMulticast?.receive();
+        if (datagramPacket != null) {
           if (String.fromCharCodes(datagramPacket.data) == "ping") sendMessageMulticastGroup(Message("eu", "00:00", "ping ack"));
           print(datagramPacket.data);
           messages.add(Message('SomeoneElse', '00:00', String.fromCharCodes(datagramPacket.data)));
           notifyListeners();
         }
-      });
-    }
+      }
+    });
   }
 
   void sendMessageMulticastGroup(Message message) {
@@ -149,30 +141,19 @@ class CommState with ChangeNotifier {
       } catch (e) {
         print(e.toString());
       }
-      print("Message send from" +
-          socket.address.toString() +
-          " : " +
-          socket.port.toString() +
-          "writeThisSocket:" +
-          socket.writeEventsEnabled.toString() +
-          " readListenSocket: " +
-          this.socketsListenMulticast[0].readEventsEnabled.toString() +
-          " ipListenSocket0:" +
-          this.socketsListenMulticast[0].address.toString() +
-          " ipListenSocket1:" +
-          this.socketsListenMulticast[1].address.toString());
+      print("Message send from" + socket.address.toString() + " : " + socket.port.toString() + "writeThisSocket:" + socket.writeEventsEnabled.toString() + " readListenSocket: ");
     }
     messages.add(message);
     notifyListeners();
   }
 
-  void handleListen(RawSocketEvent event, RawDatagramSocket listenMulticastSocket) {
-    if (event == RawSocketEvent.read) {
-      Datagram? datagram = listenMulticastSocket.receive();
-      if (datagram == null) return;
-      messages.add(Message('SomeoneElse', '00:00', String.fromCharCodes(datagram.data)));
-      notifyListeners();
-      log("ascult");
-    }
-  }
+  // void handleListen(RawSocketEvent event, RawDatagramSocket listenMulticastSocket) {
+  //   if (event == RawSocketEvent.read) {
+  //     Datagram? datagram = listenMulticastSocket.receive();
+  //     if (datagram == null) return;
+  //     messages.add(Message('SomeoneElse', '00:00', String.fromCharCodes(datagram.data)));
+  //     notifyListeners();
+  //     log("ascult");
+  //   }
+  // }
 }
