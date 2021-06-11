@@ -9,25 +9,30 @@ class Options extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final commState = Provider.of<CommState>(context);
-    final textControllerIp = TextEditingController();
-    final textControllerPort = TextEditingController();
+    final textControllerId = TextEditingController();
     return Column(
       children: <Widget>[
         TextField(
-          decoration: InputDecoration(hintText: 'Ip'),
-          controller: textControllerIp,
+          decoration: InputDecoration(hintText: 'Id'),
+          controller: textControllerId,
         ),
-        TextField(
-          decoration: InputDecoration(hintText: 'Port'),
-          controller: textControllerPort,
-        ),
+        Expanded(
+            child: Container(
+                child: ListView.builder(
+          scrollDirection: Axis.vertical,
+          itemCount: commState.networkUsers.length,
+          itemBuilder: (BuildContext context, int index) {
+            String key = commState.networkUsers.keys.elementAt(index);
+            return Text(commState.networkUsers[key]!.destinationIp);
+          },
+        ))),
         IconButton(
           onPressed: () async {
             /*commState.stateSecureSocket = await Socket.connect(
                 textControllerIp.text, int.parse(textControllerPort.text));
             commState.listenMessage();
             */
-            commState.connectToMulticastGroup();
+            commState.connectToMulticastGroup(textControllerId.text);
           },
           icon: Icon(Icons.connect_without_contact),
         ),

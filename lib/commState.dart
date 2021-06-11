@@ -1,11 +1,15 @@
 import 'dart:collection';
 import 'dart:developer';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:chat_app/models/userAddress.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:chat_app/models/message.dart';
+import 'package:chat_app/models/userRoute.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
+import 'dart:convert';
 
 class CommState with ChangeNotifier {
   Socket? socket; // vezi SecureSocket
@@ -13,6 +17,7 @@ class CommState with ChangeNotifier {
   RawDatagramSocket? socketListenMulticast;
   InternetAddress multicastGroupAddress = InternetAddress("239.255.27.99");
   int multicastGroupPort = 27399;
+  Map<String, UserRoute> networkUsers = {};
 
   List<Message> messages = []; //pe viitor in alt state, sunt necesare doar in screen-urile cu chat
   //lista de conectiuni posibile(available users)| pot verifica si doar cu 3 device-uri: pc-ul connectat la hotSpo huawei -->(send hello) pe broadcastul network-ului
@@ -52,6 +57,12 @@ class CommState with ChangeNotifier {
 
   //pai daca nu ascult pe acelasi port pe care se trimit mesajele atunci cum sa le primesc... ggwp
 
+  //la prima lansare a aplicatiei e nevoie de internet pentru a creea un ID unic, baza de date la un server cu toate id-urile create
+
+  //ethernet/networkInterface nu functioneaza sa dea join multicast daca nu are enable IPv6??
+
+  //adaugat de ales ID manual pana implementez firebase pentru alocare ID
+
   static const platform = const MethodChannel('first.flaviu.dev/multicastLock');
 
   set stateSecureSocket(Socket socket) {
@@ -80,7 +91,7 @@ class CommState with ChangeNotifier {
     );
   }
 
-  void connectToMulticastGroup() async {
+  void connectToMulticastGroup(String idManual) async {
     //listen cu un singur socket pe toate interfetele?
     //send trebuie pentru fiecare separat.
     //lock pentru android
@@ -124,13 +135,42 @@ class CommState with ChangeNotifier {
       if (event == RawSocketEvent.read) {
         final datagramPacket = socketListenMulticast?.receive();
         if (datagramPacket != null) {
-          if (String.fromCharCodes(datagramPacket.data) == "ping") sendMessageMulticastGroup(Message("eu", "00:00", "ping ack"));
-          print(datagramPacket.data);
           messages.add(Message('SomeoneElse', '00:00', String.fromCharCodes(datagramPacket.data)));
+          print("Listened: " + String.fromCharCodes(datagramPacket.data));
+          var dataObject;
+          try {
+            dataObject = jsonDecode(String.fromCharCodes(datagramPacket.data));
+          } catch (e) {
+            print(e.toString() + "Err jsonDecode");
+          }
+          if (dataObject != null) {
+            //verifica daca id NU exista in networkUsers si atunci adauga la rute
+            String idUser = dataObject['id'];
+            String ipUser = dataObject['ip'];
+            if (!networkUsers.containsKey(idUser)) {
+              UserRoute userRoute = UserRoute.empty();
+
+              userRoute.destinationIp = ipUser;
+              userRoute.route.add(UserAddress(idUser, ipUser));
+
+              networkUsers[idUser] = userRoute;
+              inspect(userRoute);
+              //nu mai trebuie ca astea sunt locale deci tot timpul lungime 1 |daca exista atunci verifica lungimea rutei primite, daca e mai scurta atunci update
+              //daca nu exista atunci adaugi ruta
+            }
+
+            messages.add(Message('SomeoneElse', '00:00', dataObject['type'] + dataObject['text'] + dataObject['ip'] + dataObject['id']));
+          }
           notifyListeners();
         }
       }
     });
+
+    try {
+      this.announcePresence(idManual);
+    } catch (e) {
+      print(e.toString() + 'Eroare ANOUNCE!!!');
+    }
   }
 
   void sendMessageMulticastGroup(Message message) {
@@ -144,6 +184,32 @@ class CommState with ChangeNotifier {
       print("Message send from" + socket.address.toString() + " : " + socket.port.toString() + "writeThisSocket:" + socket.writeEventsEnabled.toString() + " readListenSocket: ");
     }
     messages.add(message);
+    notifyListeners();
+  }
+
+  void announcePresence(String idManual) {
+    Message messageM = Message('Someone', '20:00', '');
+    for (final RawDatagramSocket socket in this.socketsSendMulticast) {
+      socket.writeEventsEnabled = true;
+      String type = "announce";
+      String text = "Hello network";
+      String ip = socket.address.address.toString();
+      final messageMap = {
+        'type': type,
+        'text': text,
+        'ip': ip,
+        'id': idManual,
+      };
+      final message = jsonEncode(messageMap);
+      messageM.text = message;
+      try {
+        socket.send(message.codeUnits, this.multicastGroupAddress, this.multicastGroupPort);
+      } catch (e) {
+        print(e.toString() + "ERROARE inauntru ANNOUNCE");
+      }
+      print("Message send from" + socket.address.toString() + " : " + socket.port.toString() + "writeThisSocket:" + socket.writeEventsEnabled.toString() + " readListenSocket: ");
+    }
+    messages.add(messageM);
     notifyListeners();
   }
 
