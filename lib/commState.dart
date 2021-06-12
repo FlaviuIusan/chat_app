@@ -167,7 +167,13 @@ class CommState with ChangeNotifier {
     });
 
     try {
-      this.announcePresence(idManual);
+      Timer.periodic(Duration(seconds: 5), (timer) {
+        try {
+          this.announcePresence(idManual);
+        } catch (e) {
+          print(e.toString() + "Eroare TIMERRR!!");
+        }
+      });
     } catch (e) {
       print(e.toString() + 'Eroare ANOUNCE!!!');
     }
