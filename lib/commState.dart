@@ -18,6 +18,7 @@ class CommState with ChangeNotifier {
   InternetAddress multicastGroupAddress = InternetAddress("239.255.27.99");
   int multicastGroupPort = 27399;
   Map<String, UserRoute> networkUsers = {};
+  String idTalkTo = 'disconnected';
 
   List<Message> messages = []; //pe viitor in alt state, sunt necesare doar in screen-urile cu chat
   //lista de conectiuni posibile(available users)| pot verifica si doar cu 3 device-uri: pc-ul connectat la hotSpo huawei -->(send hello) pe broadcastul network-ului
@@ -155,13 +156,14 @@ class CommState with ChangeNotifier {
 
               networkUsers[idUser] = userRoute;
               inspect(userRoute);
+              //notifyListeners();
               //nu mai trebuie ca astea sunt locale deci tot timpul lungime 1 |daca exista atunci verifica lungimea rutei primite, daca e mai scurta atunci update
               //daca nu exista atunci adaugi ruta
             }
 
-            messages.add(Message('SomeoneElse', '00:00', dataObject['type'] + dataObject['text'] + dataObject['ip'] + dataObject['id']));
+            //messages.add(Message('SomeoneElse', '00:00', dataObject['type'] + dataObject['text'] + dataObject['ip'] + dataObject['id']));
           }
-          notifyListeners();
+          //notifyListeners();
         }
       }
     });
@@ -215,8 +217,8 @@ class CommState with ChangeNotifier {
       }
       print("Message send from" + socket.address.toString() + " : " + socket.port.toString() + "writeThisSocket:" + socket.writeEventsEnabled.toString() + " readListenSocket: ");
     }
-    messages.add(messageM);
-    notifyListeners();
+    //messages.add(messageM);
+    //notifyListeners();
   }
 
   // void handleListen(RawSocketEvent event, RawDatagramSocket listenMulticastSocket) {
