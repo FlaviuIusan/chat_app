@@ -2,7 +2,6 @@ import 'dart:collection';
 import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:chat_app/models/userAddress.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:chat_app/models/message.dart';
@@ -128,6 +127,12 @@ class CommState with ChangeNotifier {
         print(e.toString());
       }
     }
+    // UserRoute meUserRoute = UserRoute.empty();
+    // String meIdUser = idManual;
+    // String meIpUser = this.socketsSendMulticast[0].address.address.toString();
+    // meUserRoute.destinationIp = meIpUser;
+    // meUserRoute.route.add(UserAddress(meIdUser, meIpUser));
+    // networkUsers[meIdUser] = meUserRoute;
 
     //socket.readEventsEnabled = true;
     // listenMulticastSocket.broadcastEnabled = true;
@@ -138,32 +143,34 @@ class CommState with ChangeNotifier {
         if (datagramPacket != null) {
           messages.add(Message('SomeoneElse', '00:00', String.fromCharCodes(datagramPacket.data)));
           print("Listened: " + String.fromCharCodes(datagramPacket.data));
-          var dataObject;
-          try {
-            dataObject = jsonDecode(String.fromCharCodes(datagramPacket.data));
-          } catch (e) {
-            print(e.toString() + "Err jsonDecode");
-          }
-          if (dataObject != null) {
-            //verifica daca id NU exista in networkUsers si atunci adauga la rute
-            String idUser = dataObject['id'];
-            String ipUser = dataObject['ip'];
-            if (!networkUsers.containsKey(idUser)) {
-              UserRoute userRoute = UserRoute.empty();
+          var routes = jsonDecode(String.fromCharCodes(datagramPacket.data));
+          print(routes.toString());
+          // var dataObject;
+          // try {
+          //   dataObject = jsonDecode(String.fromCharCodes(datagramPacket.data));
+          // } catch (e) {
+          //   print(e.toString() + "Err jsonDecode");
+          // }
+          // if (dataObject != null) {
+          //   //verifica daca id NU exista in networkUsers si atunci adauga la rute
+          //   String idUser = dataObject['id'];
+          //   String ipUser = dataObject['ip'];
+          //   if (!networkUsers.containsKey(idUser)) {
+          //     UserRoute userRoute = UserRoute.empty();
 
-              userRoute.destinationIp = ipUser;
-              userRoute.route.add(UserAddress(idUser, ipUser));
+          //     userRoute.destinationIp = ipUser;
+          //     userRoute.route.add(UserAddress(idUser, ipUser));
 
-              networkUsers[idUser] = userRoute;
-              inspect(userRoute);
-              //notifyListeners();
-              //nu mai trebuie ca astea sunt locale deci tot timpul lungime 1 |daca exista atunci verifica lungimea rutei primite, daca e mai scurta atunci update
-              //daca nu exista atunci adaugi ruta
-            }
+          //     networkUsers[idUser] = userRoute;
+          //     inspect(userRoute);
+          //     //notifyListeners();
+          //     //nu mai trebuie ca astea sunt locale deci tot timpul lungime 1 |daca exista atunci verifica lungimea rutei primite, daca e mai scurta atunci update
+          //     //daca nu exista atunci adaugi ruta
+          //   }
 
-            //messages.add(Message('SomeoneElse', '00:00', dataObject['type'] + dataObject['text'] + dataObject['ip'] + dataObject['id']));
-          }
-          //notifyListeners();
+          //   //messages.add(Message('SomeoneElse', '00:00', dataObject['type'] + dataObject['text'] + dataObject['ip'] + dataObject['id']));
+          // }
+          // //notifyListeners();
         }
       }
     });
@@ -199,16 +206,15 @@ class CommState with ChangeNotifier {
     Message messageM = Message('Someone', '20:00', '');
     for (final RawDatagramSocket socket in this.socketsSendMulticast) {
       socket.writeEventsEnabled = true;
-      String type = "announce";
-      String text = "Hello network";
       String ip = socket.address.address.toString();
-      final messageMap = {
-        'type': type,
-        'text': text,
-        'ip': ip,
-        'id': idManual,
-      };
-      final message = jsonEncode(messageMap);
+
+      UserRoute userRoute = UserRoute.empty();
+      userRoute.destinationIp = ip;
+      userRoute.route.add(UserAddress(idManual, ip));
+      networkUsers.remove(idManual);
+      networkUsers[idManual] = userRoute;
+
+      final message = jsonEncode(networkUsers);
       messageM.text = message;
       try {
         socket.send(message.codeUnits, this.multicastGroupAddress, this.multicastGroupPort);
