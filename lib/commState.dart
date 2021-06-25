@@ -18,6 +18,10 @@ class CommState with ChangeNotifier {
   int multicastGroupPort = 27399;
   Map<String, UserRoute> networkUsers = {};
   String idTalkTo = 'disconnected';
+  int seqNumber = 0;
+  String idMe = '';
+  bool closing = false;
+  List<NetworkInterface> interfaces = [];
 
   List<Message> messages = []; //pe viitor in alt state, sunt necesare doar in screen-urile cu chat
   //lista de conectiuni posibile(available users)| pot verifica si doar cu 3 device-uri: pc-ul connectat la hotSpo huawei -->(send hello) pe broadcastul network-ului
@@ -95,6 +99,7 @@ class CommState with ChangeNotifier {
     //listen cu un singur socket pe toate interfetele?
     //send trebuie pentru fiecare separat.
     //lock pentru android
+    this.idMe = idManual;
     if (Platform.isAndroid) {
       var multicastLock = await platform.invokeMethod('multicastLock');
       print(multicastLock.toString());
@@ -141,10 +146,57 @@ class CommState with ChangeNotifier {
       if (event == RawSocketEvent.read) {
         final datagramPacket = socketListenMulticast?.receive();
         if (datagramPacket != null) {
+          //nu verifica mesajele trimise de el insusi
+          for (NetworkInterface interface in interfaces) {
+            if (interface.addresses[0].toString() == datagramPacket.address.toString()) {
+              return;
+            }
+          }
           messages.add(Message('SomeoneElse', '00:00', String.fromCharCodes(datagramPacket.data)));
           print("Listened: " + String.fromCharCodes(datagramPacket.data));
-          var routes = jsonDecode(String.fromCharCodes(datagramPacket.data));
-          print(routes.toString());
+          Map<String, dynamic> routesReceived = jsonDecode(String.fromCharCodes(datagramPacket.data));
+          //parcurge fiecare ruta primita
+          for (int i = 0; i <= routesReceived.length - 1; ++i) {
+            String key = routesReceived.keys.elementAt(i);
+            UserRoute userRouteL = UserRoute.fromJson(routesReceived[key]);
+            //verifica sa nu fie ruta care el insusi
+            if (key != idManual) {
+              //verifica daca contine ruta catre key atunci faci verificari mai multe, altfel adaug-o direct
+              if (networkUsers.containsKey(key)) {
+                //verifica daca ruta este mai noua decat cea actuala
+                if (userRouteL.seqNumber > networkUsers[key]!.seqNumber) {
+                  //daca ruta indica nodul ca este deconectat atunci
+                  if (userRouteL.destinationIp == 'disconnected') {
+                    //parcurge toate rutele actuale
+                    for (int j = 0; j <= networkUsers.length - 1; ++j) {
+                      print("JJJJ: " + j.toString());
+                      String keyNetU = networkUsers.keys.elementAt(j);
+                      //verifica daca ruta contine nod-ul respectiv
+                      for (UserAddress userAddress in networkUsers[keyNetU]!.route) {
+                        if (userAddress.id == key) {
+                          networkUsers[keyNetU]!.destinationIp = 'disconnected';
+                          break;
+                        }
+                      }
+                    }
+                  }
+                  //updateaza ruta
+                  networkUsers.remove(key);
+                  networkUsers[key] = userRouteL;
+                }
+                if (userRouteL.seqNumber == networkUsers[key]!.seqNumber) {
+                  if (userRouteL.route.length < networkUsers[key]!.route.length) {
+                    networkUsers.remove(key);
+                    networkUsers[key] = userRouteL;
+                  }
+                }
+              } else {
+                networkUsers[key] = userRouteL;
+              }
+            }
+          }
+          print("MAP NOW IS:::::\n " + jsonEncode(networkUsers));
+
           // var dataObject;
           // try {
           //   dataObject = jsonDecode(String.fromCharCodes(datagramPacket.data));
@@ -204,24 +256,46 @@ class CommState with ChangeNotifier {
 
   void announcePresence(String idManual) {
     Message messageM = Message('Someone', '20:00', '');
+    //trimite mesaj cu link-state de pe fiecare socket(interfata)
     for (final RawDatagramSocket socket in this.socketsSendMulticast) {
       socket.writeEventsEnabled = true;
       String ip = socket.address.address.toString();
 
       UserRoute userRoute = UserRoute.empty();
-      userRoute.destinationIp = ip;
+      if (closing == false) {
+        userRoute.destinationIp = ip;
+      } else {
+        userRoute.destinationIp = 'disconnected';
+      }
+      this.seqNumber += 1;
+      userRoute.seqNumber = this.seqNumber;
       userRoute.route.add(UserAddress(idManual, ip));
-      networkUsers.remove(idManual);
-      networkUsers[idManual] = userRoute;
 
-      final message = jsonEncode(networkUsers);
+      Map<String, UserRoute> networkUsersCopy = Map<String, UserRoute>.from(networkUsers);
+      //schimba la fiecare ruta inceput-ul, sa fie prin socket-ul actual
+      for (int i = 0; i <= networkUsersCopy.length - 1; ++i) {
+        String key = networkUsersCopy.keys.elementAt(i);
+        networkUsersCopy[key]!.route.insert(0, UserAddress(idManual, ip));
+      }
+      //adauga ruta catre el insusi
+      networkUsersCopy.remove(idManual);
+      networkUsersCopy[idManual] = userRoute;
+
+      final message = jsonEncode(networkUsersCopy);
       messageM.text = message;
+
+      //fiidca in dart nu exista sa copiezi un obiect, doar sa pasezi referinta, schimba rutele cum erau initial pentru interfata urmatoare din for
+      for (int i = 0; i <= networkUsersCopy.length - 1; ++i) {
+        String key = networkUsersCopy.keys.elementAt(i);
+        networkUsersCopy[key]!.route.removeAt(0);
+      }
+
       try {
         socket.send(message.codeUnits, this.multicastGroupAddress, this.multicastGroupPort);
       } catch (e) {
         print(e.toString() + "ERROARE inauntru ANNOUNCE");
       }
-      print("Message send from" + socket.address.toString() + " : " + socket.port.toString() + "writeThisSocket:" + socket.writeEventsEnabled.toString() + " readListenSocket: ");
+      print("Message send from" + ip + "MESSAGE:\n" + message);
     }
     //messages.add(messageM);
     //notifyListeners();

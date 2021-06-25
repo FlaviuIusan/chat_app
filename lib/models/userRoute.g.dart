@@ -12,11 +12,12 @@ UserRoute _$UserRouteFromJson(Map<String, dynamic> json) {
     (json['route'] as List<dynamic>)
         .map((e) => UserAddress.fromJson(e as Map<String, dynamic>))
         .toList(),
-  );
+  )..seqNumber = json['seqNumber'] as int;
 }
 
 Map<String, dynamic> _$UserRouteToJson(UserRoute instance) => <String, dynamic>{
       'destinationIp': instance.destinationIp,
+      'seqNumber': instance.seqNumber,
       'route': instance.route.map((e) => e.toJson()).toList(),
     };
 

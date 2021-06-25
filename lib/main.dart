@@ -33,8 +33,62 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   String currentScreen = 'start';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance!.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance!.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.inactive:
+        // try {
+        //   final CommState commState = Provider.of<CommState>(context, listen: false);
+        //   commState.closing = true;
+        //   print("INACTIVEEE:-------------------------------\n----------------------------------------\n Value: " + commState.idMe);
+        // } catch (e) {
+        //   print("ERROARE INACTIVEEE: " + e.toString());
+        // }
+        break;
+      case AppLifecycleState.paused:
+        try {
+          final CommState commState = Provider.of<CommState>(context, listen: false);
+          commState.closing = true;
+          print("PAUSEDDDDDDD:-------------------------------\n----------------------------------------\n Value: " + commState.idMe);
+        } catch (e) {
+          print("ERROARE PAUSED: " + e.toString());
+        }
+        break;
+      case AppLifecycleState.detached:
+        try {
+          final CommState commState = Provider.of<CommState>(context, listen: false);
+          commState.closing = true;
+          print("DETACHEDDDD:-------------------------------\n----------------------------------------\n Value: " + commState.idMe);
+        } catch (e) {
+          print("ERROARE DETACHEEEDD: " + e.toString());
+        }
+        break;
+      case AppLifecycleState.resumed:
+        try {
+          final CommState commState = Provider.of<CommState>(context, listen: false);
+          commState.closing = false;
+          print("RESUMEEEED:-------------------------------\n----------------------------------------\n Value: " + commState.idMe);
+        } catch (e) {
+          print("ERROARE RESUMEEEEDD: " + e.toString());
+        }
+        break;
+    }
+  }
 
   void callback(String currentScreen) {
     setState(() {

@@ -22,7 +22,7 @@ class _OptionsState extends State<Options> {
   Widget build(BuildContext context) {
     final commState = Provider.of<CommState>(context);
     final textControllerId = TextEditingController();
-    Timer.periodic(Duration(seconds: 4), (timer) {
+    Timer timer = Timer.periodic(Duration(seconds: 4), (timer) {
       setState(() {});
     });
     return Column(
@@ -38,13 +38,22 @@ class _OptionsState extends State<Options> {
           itemCount: commState.networkUsers.length,
           itemBuilder: (BuildContext context, int index) {
             String key = commState.networkUsers.keys.elementAt(index);
-            return TextButton(
-                onPressed: () {
-                  //commState.screen = 'start';
-                  commState.idTalkTo = key;
-                  this.widget.callback!('start');
-                },
-                child: Text('UserId: ' + key + '  UserIp: ' + commState.networkUsers[key]!.destinationIp));
+            if (commState.networkUsers[key]!.destinationIp.compareTo('disconnected') != 0) {
+              return TextButton(
+                  onPressed: () {
+                    //commState.screen = 'start';
+                    commState.idTalkTo = key;
+                    timer.cancel();
+                    this.widget.callback!('start');
+                  },
+                  child: Text('UserId: ' + key + '  UserIp: ' + commState.networkUsers[key]!.destinationIp));
+            } else {
+              return Container(
+                color: Colors.white,
+                width: 0,
+                height: 0,
+              );
+            }
           },
         ))),
         IconButton(

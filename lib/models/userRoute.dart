@@ -6,6 +6,7 @@ part 'userRoute.g.dart';
 @JsonSerializable(explicitToJson: true)
 class UserRoute {
   String destinationIp = '';
+  int seqNumber = 0;
   List<UserAddress> route = [];
 
   UserRoute(this.destinationIp, this.route);
