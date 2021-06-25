@@ -11,17 +11,20 @@ import 'dart:async';
 import 'dart:convert';
 
 class CommState with ChangeNotifier {
-  Socket? socket; // vezi SecureSocket
+  Socket? socketSendTcp; // vezi SecureSocket
   List<RawDatagramSocket> socketsSendMulticast = <RawDatagramSocket>[];
   RawDatagramSocket? socketListenMulticast;
   InternetAddress multicastGroupAddress = InternetAddress("239.255.27.99");
   int multicastGroupPort = 27399;
+  int serverPort = 62018;
   Map<String, UserRoute> networkUsers = {};
   String idTalkTo = 'disconnected';
   int seqNumber = 0;
   String idMe = '';
   bool closing = false;
   List<NetworkInterface> interfaces = [];
+
+  List<ServerSocket> serverSockets = <ServerSocket>[];
 
   List<Message> messages = []; //pe viitor in alt state, sunt necesare doar in screen-urile cu chat
   //lista de conectiuni posibile(available users)| pot verifica si doar cu 3 device-uri: pc-ul connectat la hotSpo huawei -->(send hello) pe broadcastul network-ului
@@ -69,19 +72,34 @@ class CommState with ChangeNotifier {
 
   static const platform = const MethodChannel('first.flaviu.dev/multicastLock');
 
-  set stateSecureSocket(Socket socket) {
-    this.socket = socket;
-    //notifyListeners();
+  // set stateSecureSocket(Socket socket) {
+  //   this.socket = socket;
+  //   //notifyListeners();
+  // }
+
+  void connectToTcpServer() async {
+    String ipToConnectTo = networkUsers[idTalkTo]!.route[0].ip;
+    String ipInterfaceToUse = '';
+    List<NetworkInterface> interfaces = (await allInterfacesFactory(InternetAddressType.IPv4)).toList();
+    for (NetworkInterface interface in interfaces) {
+      String ipInterface = interface.addresses[0].address;
+      if (ipToConnectTo.substring(0, ipToConnectTo.lastIndexOf('.')) == ipInterface.substring(0, ipInterface.lastIndexOf('.'))) {
+        ipInterfaceToUse = ipInterface;
+      }
+    }
+
+    print("TRYING TO CONNECT TO:" + ipToConnectTo + " PORT: " + serverPort.toString() + "Interface: " + ipInterfaceToUse);
+    socketSendTcp = await Socket.connect(ipToConnectTo, serverPort, sourceAddress: ipInterfaceToUse);
   }
 
-  void sendMessage(Message message) {
-    this.socket?.writeln(message.text);
+  void sendMessageToUser(Message message) {
+    this.socketSendTcp?.writeln(message.text);
     messages.add(message);
     notifyListeners();
   }
 
   void listenMessage() {
-    this.socket?.listen((var data) {
+    this.socketSendTcp?.listen((var data) {
       messages.add(Message('SomeoneElse', '00:00', String.fromCharCodes(data)));
       notifyListeners();
     });
@@ -93,6 +111,20 @@ class CommState with ChangeNotifier {
       type: type,
       includeLoopback: true,
     );
+  }
+
+  void startListenningForMessages() async {
+    ServerSocket serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, serverPort);
+    serverSocket.listen((Socket socketToClient) {
+      print("AM CLIENTTTTTTTTTTTTTTTTTTT:" + socketToClient.address.address);
+      socketToClient.listen((List<int> data) {
+        String result = new String.fromCharCodes(data);
+        print("Mesaj de la client: " + result.substring(0, result.length - 1));
+        messages.add(Message('SomeoneElse', '00:00', result.substring(0, result.length - 1)));
+        notifyListeners();
+      });
+    });
+    print("SERVER DONE:" + serverSocket.address.address + serverSocket.port.toString());
   }
 
   void connectToMulticastGroup(String idManual) async {

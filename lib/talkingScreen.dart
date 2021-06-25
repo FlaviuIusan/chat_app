@@ -13,6 +13,7 @@ class TalkingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final CommState commState = Provider.of<CommState>(context);
     final textEditing = TextEditingController();
+    final SocketSend = commState.socketSendTcp;
     return Column(
       children: [
         Padding(
@@ -41,7 +42,7 @@ class TalkingScreen extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: () {
-                    commState.sendMessageMulticastGroup(Message('Me', '00:00', textEditing.text));
+                    commState.sendMessageToUser(Message('Me', '00:00', textEditing.text));
                   },
                   icon: Icon(Icons.send),
                 ),

@@ -43,6 +43,7 @@ class _OptionsState extends State<Options> {
                   onPressed: () {
                     //commState.screen = 'start';
                     commState.idTalkTo = key;
+                    commState.connectToTcpServer();
                     timer.cancel();
                     this.widget.callback!('start');
                   },
@@ -63,6 +64,7 @@ class _OptionsState extends State<Options> {
             commState.listenMessage();
             */
             commState.connectToMulticastGroup(textControllerId.text);
+            commState.startListenningForMessages();
           },
           icon: Icon(Icons.connect_without_contact),
         ),
