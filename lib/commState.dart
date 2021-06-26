@@ -11,7 +11,7 @@ import 'dart:async';
 import 'dart:convert';
 
 class CommState with ChangeNotifier {
-  Socket? socketSendTcp; // vezi SecureSocket
+  List<Socket> socketsSendTcp = <Socket>[]; // vezi SecureSocket
   List<RawDatagramSocket> socketsSendMulticast = <RawDatagramSocket>[];
   RawDatagramSocket? socketListenMulticast;
   InternetAddress multicastGroupAddress = InternetAddress("239.255.27.99");
@@ -23,6 +23,7 @@ class CommState with ChangeNotifier {
   String idMe = '';
   bool closing = false;
   List<NetworkInterface> interfaces = [];
+  bool alreadyConnected = false;
 
   List<ServerSocket> serverSockets = <ServerSocket>[];
 
@@ -77,9 +78,11 @@ class CommState with ChangeNotifier {
   //   //notifyListeners();
   // }
 
-  void connectToTcpServer() async {
-    String ipToConnectTo = networkUsers[idTalkTo]!.route[0].ip;
+  Future<int> connectToTcpServer(String id) async {
+    print("ID-UL DE CAUTATTTTTTTTTTTT este: " + id);
+    String ipToConnectTo = networkUsers[id]!.route[0].ip;
     String ipInterfaceToUse = '';
+    Socket socketSendTcp;
     List<NetworkInterface> interfaces = (await allInterfacesFactory(InternetAddressType.IPv4)).toList();
     for (NetworkInterface interface in interfaces) {
       String ipInterface = interface.addresses[0].address;
@@ -90,20 +93,39 @@ class CommState with ChangeNotifier {
 
     print("TRYING TO CONNECT TO:" + ipToConnectTo + " PORT: " + serverPort.toString() + "Interface: " + ipInterfaceToUse);
     socketSendTcp = await Socket.connect(ipToConnectTo, serverPort, sourceAddress: ipInterfaceToUse);
+    socketSendTcp.encoding = utf8;
+    socketsSendTcp.add(socketSendTcp);
+    return 1;
   }
 
-  void sendMessageToUser(Message message) {
-    this.socketSendTcp?.writeln(message.text);
+  void sendMessageToUser(String id, Message message) async {
+    String ipToSendTo = networkUsers[id]!.route[0].ip;
+    Socket? socketSendTcp;
+    bool haveSocket = false;
+    for (Socket socket in socketsSendTcp) {
+      String socketIp = socket.address.address;
+      if (socketIp.substring(0, socketIp.lastIndexOf('.')) == ipToSendTo.substring(0, ipToSendTo.lastIndexOf('.'))) {
+        socketSendTcp = socket;
+        haveSocket = true;
+      }
+    }
+    if (haveSocket == false) {
+      int waiting = await connectToTcpServer(id);
+      socketSendTcp = socketsSendTcp.last;
+    }
+    String messageToSend = jsonEncode(message);
+    socketSendTcp?.write(messageToSend);
     messages.add(message);
+    print("MESAJJJ TRIMIS--------------------------------------\n: " + "Pentru:" + message.idRecipient + "De la: " + message.idSender + messageToSend);
     notifyListeners();
   }
 
-  void listenMessage() {
-    this.socketSendTcp?.listen((var data) {
-      messages.add(Message('SomeoneElse', '00:00', String.fromCharCodes(data)));
-      notifyListeners();
-    });
-  }
+  // void listenMessage() {
+  //   this.socketSendTcp?.listen((var data) {
+  //     messages.add(Message('SomeoneElse', '00:00', String.fromCharCodes(data)));
+  //     notifyListeners();
+  //   });
+  // }
 
   Future<Iterable<NetworkInterface>> allInterfacesFactory(InternetAddressType type) {
     return NetworkInterface.list(
@@ -116,12 +138,24 @@ class CommState with ChangeNotifier {
   void startListenningForMessages() async {
     ServerSocket serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, serverPort);
     serverSocket.listen((Socket socketToClient) {
-      print("AM CLIENTTTTTTTTTTTTTTTTTTT:" + socketToClient.address.address);
+      print("AM CLIENTTTTTTTTTTTTTTTTTTT:--------------------------------------------\n" + socketToClient.address.address.toString());
       socketToClient.listen((List<int> data) {
-        String result = new String.fromCharCodes(data);
-        print("Mesaj de la client: " + result.substring(0, result.length - 1));
-        messages.add(Message('SomeoneElse', '00:00', result.substring(0, result.length - 1)));
-        notifyListeners();
+        //print("TESTTTTTTTTTTTTTT--------------------------------------\n: " + data.toString());
+        String result = utf8.decode(data);
+        Map<String, dynamic> json = jsonDecode(result);
+        print("Mesaj de la client--------------------------------------\n: " + json.toString());
+        Message messageReceived = Message.fromJson(json);
+        //daca mesajul este adresat user-ului care l-a primit
+        if (messageReceived.idRecipient == this.idMe) {
+          print("MESAJJJ Pentru Mineeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee--------------------------------------\n: ");
+          messages.add(messageReceived);
+          notifyListeners();
+        }
+        //altfel redirectioneaza catre cine este adresat
+        else {
+          print("MESAJJJ Pentru Altcinevaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa--------------------------------------\n: " + messageReceived.idRecipient);
+          sendMessageToUser(messageReceived.idRecipient, messageReceived);
+        }
       });
     });
     print("SERVER DONE:" + serverSocket.address.address + serverSocket.port.toString());
@@ -131,6 +165,7 @@ class CommState with ChangeNotifier {
     //listen cu un singur socket pe toate interfetele?
     //send trebuie pentru fiecare separat.
     //lock pentru android
+    this.alreadyConnected = true;
     this.idMe = idManual;
     if (Platform.isAndroid) {
       var multicastLock = await platform.invokeMethod('multicastLock');
@@ -184,7 +219,7 @@ class CommState with ChangeNotifier {
               return;
             }
           }
-          messages.add(Message('SomeoneElse', '00:00', String.fromCharCodes(datagramPacket.data)));
+          //messages.add(Message('multicast', 'multicast', '00:00', String.fromCharCodes(datagramPacket.data)));
           print("Listened: " + String.fromCharCodes(datagramPacket.data));
           Map<String, dynamic> routesReceived = jsonDecode(String.fromCharCodes(datagramPacket.data));
           //parcurge fiecare ruta primita
@@ -287,7 +322,7 @@ class CommState with ChangeNotifier {
   }
 
   void announcePresence(String idManual) {
-    Message messageM = Message('Someone', '20:00', '');
+    Message messageM = Message('multicast', idManual, '00:00', '');
     //trimite mesaj cu link-state de pe fiecare socket(interfata)
     for (final RawDatagramSocket socket in this.socketsSendMulticast) {
       socket.writeEventsEnabled = true;

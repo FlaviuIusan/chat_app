@@ -22,9 +22,6 @@ class _OptionsState extends State<Options> {
   Widget build(BuildContext context) {
     final commState = Provider.of<CommState>(context);
     final textControllerId = TextEditingController();
-    Timer timer = Timer.periodic(Duration(seconds: 4), (timer) {
-      setState(() {});
-    });
     return Column(
       children: <Widget>[
         TextField(
@@ -43,8 +40,6 @@ class _OptionsState extends State<Options> {
                   onPressed: () {
                     //commState.screen = 'start';
                     commState.idTalkTo = key;
-                    commState.connectToTcpServer();
-                    timer.cancel();
                     this.widget.callback!('start');
                   },
                   child: Text('UserId: ' + key + '  UserIp: ' + commState.networkUsers[key]!.destinationIp));
@@ -63,8 +58,12 @@ class _OptionsState extends State<Options> {
                 textControllerIp.text, int.parse(textControllerPort.text));
             commState.listenMessage();
             */
-            commState.connectToMulticastGroup(textControllerId.text);
-            commState.startListenningForMessages();
+            if (commState.alreadyConnected) {
+              setState(() {});
+            } else {
+              commState.connectToMulticastGroup(textControllerId.text);
+              commState.startListenningForMessages();
+            }
           },
           icon: Icon(Icons.connect_without_contact),
         ),
