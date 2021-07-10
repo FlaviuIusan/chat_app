@@ -9,6 +9,7 @@ import 'package:chat_app/models/userRoute.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:rxdart/rxdart.dart';
 
 class CommState with ChangeNotifier {
   List<Socket> socketsSendTcp = <Socket>[]; // vezi SecureSocket
@@ -24,6 +25,7 @@ class CommState with ChangeNotifier {
   bool closing = false;
   List<NetworkInterface> interfaces = [];
   bool alreadyConnected = false;
+  Stream<String> streamString = Stream.empty();
 
   List<ServerSocket> serverSockets = <ServerSocket>[];
 
