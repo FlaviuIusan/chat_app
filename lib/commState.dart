@@ -25,7 +25,7 @@ class CommState with ChangeNotifier {
   bool closing = false;
   List<NetworkInterface> interfaces = [];
   bool alreadyConnected = false;
-  Stream<String> streamString = Stream.empty();
+  var streamChangesToNetworkUsers = StreamController.broadcast();
 
   List<ServerSocket> serverSockets = <ServerSocket>[];
 
@@ -244,6 +244,7 @@ class CommState with ChangeNotifier {
                       for (UserAddress userAddress in networkUsers[keyNetU]!.route) {
                         if (userAddress.id == key) {
                           networkUsers[keyNetU]!.destinationIp = 'disconnected';
+                          streamChangesToNetworkUsers.add(keyNetU + "A fost deconectat, ruta continea un nod deconectat recent cu id" + key);
                           break;
                         }
                       }
@@ -252,15 +253,18 @@ class CommState with ChangeNotifier {
                   //updateaza ruta
                   networkUsers.remove(key);
                   networkUsers[key] = userRouteL;
+                  streamChangesToNetworkUsers.add(key + "A fost actualizat cu o ruta mai NOUA cu seqNumber" + userRouteL.seqNumber.toString());
                 }
                 if (userRouteL.seqNumber == networkUsers[key]!.seqNumber) {
                   if (userRouteL.route.length < networkUsers[key]!.route.length) {
                     networkUsers.remove(key);
                     networkUsers[key] = userRouteL;
+                    streamChangesToNetworkUsers.add(key + "A fost actualizat cu o ruta mai SCURTA cu ACELASI seqNumber" + userRouteL.seqNumber.toString());
                   }
                 }
               } else {
                 networkUsers[key] = userRouteL;
+                streamChangesToNetworkUsers.add(key + "A fost adaugat cu o ruta care nu exista pana acum");
               }
             }
           }

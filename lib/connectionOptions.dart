@@ -10,6 +10,7 @@ import 'dart:async';
 
 class Options extends StatefulWidget {
   Function? callback;
+  StreamSubscription? subscription;
 
   Options(this.callback);
 
@@ -19,9 +20,22 @@ class Options extends StatefulWidget {
 
 class _OptionsState extends State<Options> {
   @override
+  void dispose() {
+    this.widget.subscription?.cancel();
+    print("DISPOSEEEEEEEEEEE");
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final commState = Provider.of<CommState>(context);
     final textControllerId = TextEditingController();
+    this.widget.subscription = commState.streamChangesToNetworkUsers.stream.listen((event) {
+      if (mounted) {
+        setState(() {});
+      }
+      print("Subscription Running");
+    });
     return Column(
       children: <Widget>[
         TextField(
@@ -39,6 +53,7 @@ class _OptionsState extends State<Options> {
               return TextButton(
                   onPressed: () {
                     //commState.screen = 'start';
+                    this.widget.subscription?.cancel();
                     commState.idTalkTo = key;
                     this.widget.callback!('start');
                   },
