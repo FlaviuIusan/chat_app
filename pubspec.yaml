@@ -31,6 +31,7 @@ dependencies:
   cupertino_icons: ^1.0.2
   provider: ^5.0.0
   rxdart: ^0.27.1
+  wifi_iot: ^0.3.4
 
 dev_dependencies:
   flutter_test:

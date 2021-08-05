@@ -82,6 +82,18 @@ class _OptionsState extends State<Options> {
           },
           icon: Icon(Icons.connect_without_contact),
         ),
+        IconButton(
+          onPressed: () {
+            commState.enableWiFi();
+          },
+          icon: Icon(Icons.wifi),
+        ),
+        IconButton(
+          onPressed: () {
+            commState.getWifiList();
+          },
+          icon: Icon(Icons.wifi_calling_3),
+        ),
       ],
     );
   }

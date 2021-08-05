@@ -9,7 +9,7 @@ import 'package:chat_app/models/userRoute.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'package:rxdart/rxdart.dart';
+import 'package:wifi_iot/wifi_iot.dart';
 
 class CommState with ChangeNotifier {
   List<Socket> socketsSendTcp = <Socket>[]; // vezi SecureSocket
@@ -383,4 +383,18 @@ class CommState with ChangeNotifier {
   //     log("ascult");
   //   }
   // }
+
+  void enableWiFi() async {
+    bool enabled = await WiFiForIoTPlugin.isEnabled();
+    if (!enabled) {
+      WiFiForIoTPlugin.setEnabled(true, shouldOpenSettings: true);
+    }
+  }
+
+  void getWifiList() async {
+    if (Platform.isAndroid) {
+      var wifiListNames = await platform.invokeMethod('getWifiList');
+      print(wifiListNames);
+    }
+  }
 }

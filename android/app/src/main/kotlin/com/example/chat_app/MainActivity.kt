@@ -7,6 +7,10 @@ import io.flutter.plugin.common.MethodChannel
 import android.content.Context
 import android.content.ContextWrapper
 import android.net.wifi.WifiManager
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
+import android.util.Log
 
 class MainActivity: FlutterActivity() {
 	
@@ -27,6 +31,72 @@ class MainActivity: FlutterActivity() {
 				val multicast = this.release();
 				result.success(multicast)
 			} 
+			else if(call.method == "getWifiList") {
+				this.wifi = this.context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+				val results = wifi.scanResults
+				val count = results.size
+				//result.success(count)
+				val resultsNames = mutableListOf<String>()
+				val stringNames: String = "Rezultate: "
+				for (result in results) {
+					Log.d("WifiList", result.SSID)
+					resultsNames.add(result.SSID)
+				}
+				val stringOfNames = resultsNames.joinToString(", ")
+				result.success("$count $stringOfNames")
+
+				val wifiScanReceiver = object : BroadcastReceiver() {
+
+					override fun onReceive(context: Context, intent: Intent) {
+					  val success = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false)
+					  if (success) {
+						val results = wifi.scanResults
+						val count = results.size
+						//result.success(count)
+						val resultsNames = mutableListOf<String>()
+						val stringNames: String = "Rezultate: "
+						for (result in results) {
+							Log.d("WifiList", result.SSID)
+							resultsNames.add(result.SSID)
+						}
+						val stringOfNames = resultsNames.joinToString(", ")
+						result.success("$count $stringOfNames")
+					  } else {
+						val results = wifi.scanResults
+						val count = results.size
+						//result.success(count)
+						val resultsNames = mutableListOf<String>()
+						val stringNames: String = "Rezultate: "
+						for (result in results) {
+							Log.d("WifiList", result.SSID)
+							resultsNames.add(result.SSID)
+						}
+						val stringOfNames = resultsNames.joinToString(", ")
+						result.success("$count $stringOfNames")
+					  }
+					}
+				  }
+				  
+				  val intentFilter = IntentFilter()
+				  intentFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
+				  context.registerReceiver(wifiScanReceiver, intentFilter)
+				  
+				  val success = wifi.startScan()
+				  if (!success) {
+					val results = wifi.scanResults
+						val count = results.size
+						//result.success(count)
+						val resultsNames = mutableListOf<String>()
+						val stringNames: String = "Rezultate: "
+						for (result in results) {
+							Log.d("WifiList", result.SSID)
+							resultsNames.add(result.SSID)
+						}
+						val stringOfNames = resultsNames.joinToString(", ")
+						result.success("$count $stringOfNames")
+				  }
+				  context.unregisterReceiver(wifiScanReceiver)
+			}
 			else {
 				result.notImplemented()
 			}
