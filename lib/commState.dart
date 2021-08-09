@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:wifi_iot/wifi_iot.dart';
+import 'package:geolocator/geolocator.dart';
 
 class CommState with ChangeNotifier {
   List<Socket> socketsSendTcp = <Socket>[]; // vezi SecureSocket
@@ -385,9 +386,14 @@ class CommState with ChangeNotifier {
   // }
 
   void enableWiFi() async {
-    bool enabled = await WiFiForIoTPlugin.isEnabled();
-    if (!enabled) {
+    bool enabledWifi = await WiFiForIoTPlugin.isEnabled();
+    if (!enabledWifi) {
       WiFiForIoTPlugin.setEnabled(true, shouldOpenSettings: true);
+    }
+    bool enabledGps = await Geolocator.isLocationServiceEnabled();
+    print(enabledGps.toString());
+    if (!enabledGps) {
+      Position position = await Geolocator.getCurrentPosition();
     }
   }
 

@@ -33,17 +33,17 @@ class MainActivity: FlutterActivity() {
 			} 
 			else if(call.method == "getWifiList") {
 				this.wifi = this.context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-				val results = wifi.scanResults
-				val count = results.size
-				//result.success(count)
-				val resultsNames = mutableListOf<String>()
-				val stringNames: String = "Rezultate: "
-				for (result in results) {
-					Log.d("WifiList", result.SSID)
-					resultsNames.add(result.SSID)
-				}
-				val stringOfNames = resultsNames.joinToString(", ")
-				result.success("$count $stringOfNames")
+				// val results = wifi.scanResults
+				// val count = results.size
+				// //result.success(count)
+				// val resultsNames = mutableListOf<String>()
+				// val stringNames: String = "Rezultate: "
+				// for (result in results) {
+				// 	Log.d("WifiList", result.SSID)
+				// 	resultsNames.add(result.SSID)
+				// }
+				// val stringOfNames = resultsNames.joinToString(", ")
+				// result.success("$count $stringOfNames")
 
 				val wifiScanReceiver = object : BroadcastReceiver() {
 
@@ -60,7 +60,8 @@ class MainActivity: FlutterActivity() {
 							resultsNames.add(result.SSID)
 						}
 						val stringOfNames = resultsNames.joinToString(", ")
-						result.success("$count $stringOfNames")
+						context.unregisterReceiver(this)
+						result.success("RESULT: $count $stringOfNames")
 					  } else {
 						val results = wifi.scanResults
 						val count = results.size
@@ -72,30 +73,38 @@ class MainActivity: FlutterActivity() {
 							resultsNames.add(result.SSID)
 						}
 						val stringOfNames = resultsNames.joinToString(", ")
-						result.success("$count $stringOfNames")
+						context.unregisterReceiver(this)
+						result.success("RESULT: $count $stringOfNames")
 					  }
 					}
-				  }
-				  
-				  val intentFilter = IntentFilter()
-				  intentFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
-				  context.registerReceiver(wifiScanReceiver, intentFilter)
-				  
-				  val success = wifi.startScan()
-				  if (!success) {
+				}
+				
+				// try{
+				// 	context.unregisterReceiver(wifiScanReceiver)
+				// } catch(e: Exception) {
+					
+				// }
+
+				val intentFilter = IntentFilter()
+				intentFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
+				context.registerReceiver(wifiScanReceiver, intentFilter)
+				
+				val success = wifi.startScan()
+				Log.d("ScanResult", success.toString())
+				if (!success) {
 					val results = wifi.scanResults
-						val count = results.size
-						//result.success(count)
-						val resultsNames = mutableListOf<String>()
-						val stringNames: String = "Rezultate: "
-						for (result in results) {
-							Log.d("WifiList", result.SSID)
-							resultsNames.add(result.SSID)
-						}
-						val stringOfNames = resultsNames.joinToString(", ")
-						result.success("$count $stringOfNames")
-				  }
-				  context.unregisterReceiver(wifiScanReceiver)
+					val count = results.size
+					//result.success(count)
+					val resultsNames = mutableListOf<String>()
+					val stringNames: String = "Rezultate: "
+					for (result in results) {
+						Log.d("WifiList", result.SSID)
+						resultsNames.add(result.SSID)
+					}
+					val stringOfNames = resultsNames.joinToString(", ")
+					context.unregisterReceiver(wifiScanReceiver)
+					result.success("RESULT: $count $stringOfNames")
+				}
 			}
 			else {
 				result.notImplemented()
