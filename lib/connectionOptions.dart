@@ -94,6 +94,12 @@ class _OptionsState extends State<Options> {
           },
           icon: Icon(Icons.wifi_calling_3),
         ),
+        IconButton(
+          onPressed: () {
+            commState.getWifiFunctions();
+          },
+          icon: Icon(Icons.circle_notifications),
+        ),
       ],
     );
   }

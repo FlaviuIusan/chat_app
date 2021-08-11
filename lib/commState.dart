@@ -400,7 +400,12 @@ class CommState with ChangeNotifier {
   void getWifiList() async {
     if (Platform.isAndroid) {
       var wifiListNames = await platform.invokeMethod('getWifiList');
-      print(wifiListNames);
+      print(wifiListNames.toString());
     }
+  }
+
+  void getWifiFunctions() async {
+    var wifiFunctions = await platform.invokeMethod('getWifiFunctionsReflection');
+    print(wifiFunctions);
   }
 }
