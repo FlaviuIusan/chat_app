@@ -408,4 +408,55 @@ class CommState with ChangeNotifier {
     var wifiFunctions = await platform.invokeMethod('getWifiFunctionsReflection');
     print(wifiFunctions);
   }
+
+  void addLocalService() async {
+    //works to create wifi hotspot finnally
+    enableWiFi();
+    var statusLocalService = await platform.invokeMethod('addLocalService');
+    print(statusLocalService);
+    print("APASAT");
+    try {
+      Timer.periodic(Duration(seconds: 5), (timer) async {
+        try {
+          enableWiFi();
+          platform.invokeMethod('addServiceRequest', <String, dynamic>{
+            'return': 'no',
+          });
+        } catch (e) {
+          print(e.toString() + "Eroare addLocalService TIMERRR!!");
+        }
+      });
+    } catch (e) {
+      print(e.toString() + 'Eroare addLocalService!!!');
+    }
+  }
+
+  void addServiceRequest() async {
+    try {
+      Timer.periodic(Duration(seconds: 5), (timer) async {
+        try {
+          enableWiFi();
+          var statusServiceRequest = await platform.invokeMethod('addServiceRequest');
+          var device = jsonDecode(statusServiceRequest);
+          print(device);
+          // connectToPeer(device['device_address']);
+          timer.cancel();
+        } catch (e) {
+          print(e.toString() + "Eroare addServiceRequest TIMERRR!!");
+        }
+      });
+    } catch (e) {
+      print(e.toString() + 'Eroare addServiceRequest!!!');
+    }
+  }
+
+  Future<String> getMacAddress() async {
+    var macAddress = await platform.invokeMethod('getMacAddress');
+    return macAddress;
+  }
+
+  void connectToPeer() async {
+    var connect = await platform.invokeListMethod('connectToPeer');
+  }
+  //todo file to stream pentru a trimite fisiere
 }

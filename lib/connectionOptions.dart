@@ -84,19 +84,19 @@ class _OptionsState extends State<Options> {
         ),
         IconButton(
           onPressed: () {
-            commState.enableWiFi();
+            commState.connectToPeer();
           },
           icon: Icon(Icons.wifi),
         ),
         IconButton(
           onPressed: () {
-            commState.getWifiList();
+            commState.addLocalService();
           },
           icon: Icon(Icons.wifi_calling_3),
         ),
         IconButton(
           onPressed: () {
-            commState.getWifiFunctions();
+            commState.addServiceRequest();
           },
           icon: Icon(Icons.circle_notifications),
         ),
