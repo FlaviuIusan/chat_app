@@ -1,3 +1,4 @@
+import 'package:chat_app/models/message.dart';
 import 'package:chat_app/talkingScreen.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
@@ -7,8 +8,16 @@ import 'messagesBox.dart';
 import 'messagesSend.dart';
 import 'commState.dart';
 import 'connectionOptions.dart';
+import 'package:hive/hive.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:chat_app/database/messages.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  Directory directory = await getApplicationDocumentsDirectory();
+  Hive.init(directory.path);
+  Hive.registerAdapter(MessagesAdapter());
+  Hive.registerAdapter(MessageAdapter());
   runApp(MyApp());
 }
 

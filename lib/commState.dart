@@ -2,6 +2,7 @@ import 'dart:collection';
 import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:chat_app/database/messages.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:chat_app/models/message.dart';
@@ -11,6 +12,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:wifi_iot/wifi_iot.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:hive/hive.dart';
 
 class CommState with ChangeNotifier {
   List<Socket> socketsSendTcp = <Socket>[]; // vezi SecureSocket
@@ -119,6 +121,21 @@ class CommState with ChangeNotifier {
     String messageToSend = jsonEncode(message);
     socketSendTcp?.write(messageToSend);
     messages.add(message);
+    var messagesDB = await Hive.openBox<Messages>("messages");
+    var messagesWith = messagesDB.get(message.idRecipient);
+    if (messagesWith == null) {
+      print("IS NULL");
+      messagesDB.put(message.idRecipient, Messages([message]));
+      messagesWith = messagesDB.get(message.idRecipient);
+      print(messagesWith?.messages.last.text);
+    } else {
+      messagesWith.messages.add(message);
+      print("Not NULL");
+      messagesWith.messages.forEach((element) {
+        print(element.text);
+      });
+    }
+
     print("MESAJJJ TRIMIS--------------------------------------\n: " + "Pentru:" + message.idRecipient + "De la: " + message.idSender + messageToSend);
     notifyListeners();
   }
@@ -437,10 +454,10 @@ class CommState with ChangeNotifier {
         try {
           enableWiFi();
           var statusServiceRequest = await platform.invokeMethod('addServiceRequest');
-          var device = jsonDecode(statusServiceRequest);
-          print(device);
-          // connectToPeer(device['device_address']);
           timer.cancel();
+          var network = jsonDecode(statusServiceRequest);
+          print(network);
+          connectToPeer(network['network_name'], network['network_passphrase']);
         } catch (e) {
           print(e.toString() + "Eroare addServiceRequest TIMERRR!!");
         }
@@ -455,8 +472,12 @@ class CommState with ChangeNotifier {
     return macAddress;
   }
 
-  void connectToPeer() async {
-    var connect = await platform.invokeListMethod('connectToPeer');
+  void connectToPeer(String networkName, String networkPassphrase) async {
+    var connect = await platform.invokeMethod('connectToPeer', <String, dynamic>{
+      'networkName': networkName,
+      'networkPassphrase': networkPassphrase,
+    });
+    print(connect);
   }
   //todo file to stream pentru a trimite fisiere
 }

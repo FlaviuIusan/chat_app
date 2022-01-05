@@ -436,10 +436,10 @@ class MainActivity: FlutterActivity() {
 													"network_name" to JsonPrimitive(
 														record["networkName"]
 													),
-													"networkPassphrase" to JsonPrimitive(
+													"network_passphrase" to JsonPrimitive(
 														record["networkPassphrase"]
 													),
-													"networkInterface" to JsonPrimitive(
+													"network_interface" to JsonPrimitive(
 														record["networkInterface"]
 													)
 												)
@@ -507,24 +507,31 @@ class MainActivity: FlutterActivity() {
 					}
 			}
 			else if(call.method == "connectToPeer"){
-				thread {
+					val networkName = call.argument<String>("networkName")
+					val networkPassphrase = call.argument<String>("networkPassphrase")
 					val wifiManager = this.context.applicationContext.getSystemService(
 						WIFI_SERVICE
 					) as WifiManager
+					wifiManager.configuredNetworks.forEach{
+						wifiManager.removeNetwork(it.networkId)
+					}
 					val wifiConfig: WifiConfiguration = WifiConfiguration()
-					wifiConfig.SSID = String.format("\"%s\"", "DIRECT-Gn-Lenovo S1La40_f74d");
-					wifiConfig.preSharedKey = String.format("\"%s\"", "gsciNfYd");
+					wifiConfig.SSID = String.format("\"%s\"", networkName)
+					wifiConfig.preSharedKey = String.format("\"%s\"", networkPassphrase)
+					wifiConfig.status = WifiConfiguration.Status.ENABLED
+					val disconnect = wifiManager.disconnect()
 					Log.d(
 						"WIFIIIIICONF",
-						"CONFIG: $wifiConfig"
+						"CONFIG: $wifiConfig DISCONNECT: $disconnect"
 					)
 					val networkId = wifiManager.addNetwork(wifiConfig)
 					val succeed = wifiManager.enableNetwork(networkId, true)
+					val succeed2 = wifiManager.enableNetwork(networkId, true)
 					Log.d(
 						"connectToPeer",
 						"succeed VALUE: $succeed"
 					)
-				}
+					result.success("connected to network succesfully")
 			}
 			else if(call.method == "getMacAddress") {
 				val thisMainActivity = this
