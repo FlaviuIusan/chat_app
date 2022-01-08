@@ -120,7 +120,7 @@ class CommState with ChangeNotifier {
     }
     String messageToSend = jsonEncode(message);
     socketSendTcp?.write(messageToSend);
-    messages.add(message);
+
     var messagesDB = await Hive.openBox<Messages>("messages");
     var messagesWith = messagesDB.get(message.idRecipient);
     if (messagesWith == null) {
@@ -130,6 +130,7 @@ class CommState with ChangeNotifier {
       print(messagesWith?.messages.last.text);
     } else {
       messagesWith.messages.add(message);
+      messagesWith.save();
       print("Not NULL");
       messagesWith.messages.forEach((element) {
         print(element.text);
@@ -137,7 +138,6 @@ class CommState with ChangeNotifier {
     }
 
     print("MESAJJJ TRIMIS--------------------------------------\n: " + "Pentru:" + message.idRecipient + "De la: " + message.idSender + messageToSend);
-    notifyListeners();
   }
 
   // void listenMessage() {
@@ -159,7 +159,7 @@ class CommState with ChangeNotifier {
     ServerSocket serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, serverPort);
     serverSocket.listen((Socket socketToClient) {
       print("AM CLIENTTTTTTTTTTTTTTTTTTT:--------------------------------------------\n" + socketToClient.address.address.toString());
-      socketToClient.listen((List<int> data) {
+      socketToClient.listen((List<int> data) async {
         //print("TESTTTTTTTTTTTTTT--------------------------------------\n: " + data.toString());
         String result = utf8.decode(data);
         Map<String, dynamic> json = jsonDecode(result);
@@ -168,8 +168,21 @@ class CommState with ChangeNotifier {
         //daca mesajul este adresat user-ului care l-a primit
         if (messageReceived.idRecipient == this.idMe) {
           print("MESAJJJ Pentru Mineeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee--------------------------------------\n: ");
-          messages.add(messageReceived);
-          notifyListeners();
+          var messagesDB = await Hive.openBox<Messages>("messages");
+          var messagesWith = messagesDB.get(messageReceived.idSender);
+          if (messagesWith == null) {
+            print("RECEIVED IS NULL");
+            messagesDB.put(messageReceived.idRecipient, Messages([messageReceived]));
+            messagesWith = messagesDB.get(messageReceived.idRecipient);
+            print(messagesWith?.messages.last.text);
+          } else {
+            messagesWith.messages.add(messageReceived);
+            messagesWith.save();
+            print("RECEIVED Not NULL");
+            messagesWith.messages.forEach((element) {
+              print(element.text);
+            });
+          }
         }
         //altfel redirectioneaza catre cine este adresat
         else {
@@ -182,6 +195,7 @@ class CommState with ChangeNotifier {
   }
 
   void connectToMulticastGroup(String idManual) async {
+    await Hive.openBox<Messages>("messages");
     //listen cu un singur socket pe toate interfetele?
     //send trebuie pentru fiecare separat.
     //lock pentru android
@@ -454,6 +468,7 @@ class CommState with ChangeNotifier {
         try {
           enableWiFi();
           var statusServiceRequest = await platform.invokeMethod('addServiceRequest');
+          print("TIMER REQUEST SERVICE");
           timer.cancel();
           var network = jsonDecode(statusServiceRequest);
           print(network);

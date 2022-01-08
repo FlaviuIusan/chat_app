@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:provider/provider.dart';
-import 'messagesBox.dart';
-import 'messagesSend.dart';
 import 'commState.dart';
 import 'connectionOptions.dart';
 import 'package:hive/hive.dart';
@@ -18,6 +16,7 @@ void main() async {
   Hive.init(directory.path);
   Hive.registerAdapter(MessagesAdapter());
   Hive.registerAdapter(MessageAdapter());
+  await Hive.openBox<Messages>("messages");
   runApp(MyApp());
 }
 

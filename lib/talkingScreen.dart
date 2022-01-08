@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:provider/provider.dart';
-import 'messagesBox.dart';
-import 'messagesSend.dart';
 import 'commState.dart';
-import 'connectionOptions.dart';
 import 'package:chat_app/models/message.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:chat_app/database/messages.dart';
 
 class TalkingScreen extends StatelessWidget {
   @override
@@ -21,11 +20,17 @@ class TalkingScreen extends StatelessWidget {
         ),
         Expanded(
           child: Container(
-            child: ListView.builder(
-                scrollDirection: Axis.vertical,
-                itemCount: commState.messages.length, // messages.count
-                itemBuilder: (BuildContext context, int index) {
-                  return Text(commState.messages[index].text); // sau messages[index].text( alte chestii: time,user,idk)
+            child: ValueListenableBuilder(
+                valueListenable: Hive.box<Messages>("messages").listenable(),
+                builder: (context, Box<Messages> messagesDB, _) {
+                  var messagesWith = messagesDB.get(commState.idTalkTo);
+                  List<Message> messages = messagesWith != null ? messagesWith.messages : [];
+                  return ListView.builder(
+                      scrollDirection: Axis.vertical,
+                      itemCount: messages.length, // messages.count
+                      itemBuilder: (BuildContext context, int index) {
+                        return Text(messages[index].text); // sau messages[index].text( alte chestii: time,user,idk)
+                      });
                 }),
           ),
         ),
