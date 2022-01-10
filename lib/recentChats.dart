@@ -20,7 +20,7 @@ class RecentChats extends StatelessWidget {
               valueListenable: Hive.box<Messages>("messages").listenable(),
               builder: (context, Box<Messages> messagesDB, _) {
                 var chats = messagesDB.values.toList();
-                chats.sort((a, b) => a.lastMessageTime.compareTo(b.lastMessageTime));
+                chats.sort((a, b) => b.messages.last.time.compareTo(a.messages.last.time));
                 return ListView.builder(
                     scrollDirection: Axis.vertical,
                     itemCount: chats.length,

@@ -29,7 +29,9 @@ class TalkingScreen extends StatelessWidget {
                       scrollDirection: Axis.vertical,
                       itemCount: messages.length, // messages.count
                       itemBuilder: (BuildContext context, int index) {
-                        return Text(messages[index].text); // sau messages[index].text( alte chestii: time,user,idk)
+                        return Container(
+                          child: Text(messages[index].text),
+                        ); // sau messages[index].text( alte chestii: time,user,idk)
                       });
                 }),
           ),

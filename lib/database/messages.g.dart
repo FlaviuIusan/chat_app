@@ -18,17 +18,15 @@ class MessagesAdapter extends TypeAdapter<Messages> {
     };
     return Messages(
       (fields[0] as List).cast<Message>(),
-    )..lastMessageTime = fields[1] as DateTime;
+    );
   }
 
   @override
   void write(BinaryWriter writer, Messages obj) {
     writer
-      ..writeByte(2)
-      ..writeByte(0)
-      ..write(obj.messages)
       ..writeByte(1)
-      ..write(obj.lastMessageTime);
+      ..writeByte(0)
+      ..write(obj.messages);
   }
 
   @override

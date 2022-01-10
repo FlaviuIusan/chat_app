@@ -172,8 +172,8 @@ class CommState with ChangeNotifier {
           var messagesWith = messagesDB.get(messageReceived.idSender);
           if (messagesWith == null) {
             print("RECEIVED IS NULL");
-            messagesDB.put(messageReceived.idRecipient, Messages([messageReceived]));
-            messagesWith = messagesDB.get(messageReceived.idRecipient);
+            messagesDB.put(messageReceived.idSender, Messages([messageReceived]));
+            messagesWith = messagesDB.get(messageReceived.idSender);
             print(messagesWith?.messages.last.text);
           } else {
             messagesWith.messages.add(messageReceived);
