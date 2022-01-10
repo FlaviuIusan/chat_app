@@ -46,7 +46,7 @@ class TalkingScreen extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: () {
-                    commState.sendMessageToUser(commState.idTalkTo, Message(commState.idTalkTo, commState.idMe, '00:00', textEditing.text));
+                    commState.sendMessageToUser(commState.idTalkTo, Message(commState.idTalkTo, commState.idMe, DateTime.now(), textEditing.text));
                   },
                   icon: Icon(Icons.send),
                 ),

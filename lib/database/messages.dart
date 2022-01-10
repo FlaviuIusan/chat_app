@@ -7,5 +7,8 @@ class Messages extends HiveObject {
   @HiveField(0)
   List<Message> messages;
 
+  @HiveField(1)
+  DateTime lastMessageTime = DateTime.parse("2012-02-27");
+
   Messages(this.messages);
 }

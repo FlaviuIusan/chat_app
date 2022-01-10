@@ -14,7 +14,7 @@ class Message extends HiveObject {
   String idSender = '';
 
   @HiveField(2)
-  String time = '20:00';
+  DateTime time = DateTime.parse("2012-02-27");
 
   @HiveField(3)
   String text = '';

@@ -55,7 +55,7 @@ class _OptionsState extends State<Options> {
                     //commState.screen = 'start';
                     this.widget.subscription?.cancel();
                     commState.idTalkTo = key;
-                    this.widget.callback!('start');
+                    this.widget.callback!('talkingScreen');
                   },
                   child: Text('UserId: ' + key + '  UserIp: ' + commState.networkUsers[key]!.destinationIp));
             } else {

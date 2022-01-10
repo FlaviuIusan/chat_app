@@ -19,7 +19,7 @@ class MessageAdapter extends TypeAdapter<Message> {
     return Message(
       fields[0] as String,
       fields[1] as String,
-      fields[2] as String,
+      fields[2] as DateTime,
       fields[3] as String,
     );
   }
@@ -57,7 +57,7 @@ Message _$MessageFromJson(Map<String, dynamic> json) {
   return Message(
     json['idRecipient'] as String,
     json['idSender'] as String,
-    json['time'] as String,
+    DateTime.parse(json['time'] as String),
     json['text'] as String,
   );
 }
@@ -65,6 +65,6 @@ Message _$MessageFromJson(Map<String, dynamic> json) {
 Map<String, dynamic> _$MessageToJson(Message instance) => <String, dynamic>{
       'idRecipient': instance.idRecipient,
       'idSender': instance.idSender,
-      'time': instance.time,
+      'time': instance.time.toIso8601String(),
       'text': instance.text,
     };

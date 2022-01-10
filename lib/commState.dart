@@ -360,7 +360,7 @@ class CommState with ChangeNotifier {
   }
 
   void announcePresence(String idManual) {
-    Message messageM = Message('multicast', idManual, '00:00', '');
+    Message messageM = Message('multicast', idManual, DateTime.now(), '');
     //trimite mesaj cu link-state de pe fiecare socket(interfata)
     for (final RawDatagramSocket socket in this.socketsSendMulticast) {
       socket.writeEventsEnabled = true;
@@ -416,7 +416,7 @@ class CommState with ChangeNotifier {
   //   }
   // }
 
-  void enableWiFi() async {
+  Future<void> enableWiFi() async {
     bool enabledWifi = await WiFiForIoTPlugin.isEnabled();
     if (!enabledWifi) {
       WiFiForIoTPlugin.setEnabled(true, shouldOpenSettings: true);
@@ -442,14 +442,14 @@ class CommState with ChangeNotifier {
 
   void addLocalService() async {
     //works to create wifi hotspot finnally
-    enableWiFi();
+    await enableWiFi();
     var statusLocalService = await platform.invokeMethod('addLocalService');
     print(statusLocalService);
     print("APASAT");
     try {
-      Timer.periodic(Duration(seconds: 5), (timer) async {
+      await enableWiFi();
+      Timer.periodic(Duration(seconds: 2), (timer) async {
         try {
-          enableWiFi();
           platform.invokeMethod('addServiceRequest', <String, dynamic>{
             'return': 'no',
           });
@@ -464,9 +464,9 @@ class CommState with ChangeNotifier {
 
   void addServiceRequest() async {
     try {
-      Timer.periodic(Duration(seconds: 5), (timer) async {
+      await enableWiFi();
+      Timer.periodic(Duration(seconds: 2), (timer) async {
         try {
-          enableWiFi();
           var statusServiceRequest = await platform.invokeMethod('addServiceRequest');
           print("TIMER REQUEST SERVICE");
           timer.cancel();

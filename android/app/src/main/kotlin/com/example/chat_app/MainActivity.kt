@@ -427,7 +427,7 @@ class MainActivity: FlutterActivity() {
 						val fullDomain = "ChatApp._rcp._udp_tcp"
 						val txtListener =
 							WifiP2pManager.DnsSdTxtRecordListener { fullDomain, record, device ->
-								Log.d("addServiceRequest", "DnsSdTxtRecord available -$record")
+								Log.d("addServiceRequest", "DnsSdTxtRecord available -$record and full domain: $fullDomain")
 								record["info"]?.also {
 									if (shouldReturn?.compareTo("no") != 0){
 										result.success(

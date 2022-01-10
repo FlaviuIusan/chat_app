@@ -9,6 +9,7 @@ import 'connectionOptions.dart';
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:chat_app/database/messages.dart';
+import 'package:chat_app/recentChats.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +43,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
-  String currentScreen = 'start';
+  String currentScreen = 'connectionOptions';
 
   @override
   void initState() {
@@ -109,33 +110,55 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     //final commState = Provider.of<CommState>(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Chat App'),
+        title: (() {
+          switch (this.currentScreen) {
+            case 'recentChats':
+              return Text('Recent Chats');
+            case 'connectionOptions':
+              return Text('Connection Options');
+            case 'talkingScreen':
+              return Text('Chat');
+            default:
+              return Text('Recent Chats');
+          }
+        })(),
       ),
-      drawer: this.currentScreen == 'start'
-          ? Drawer(
-              child: Column(
-                children: <Widget>[
-                  ListTile(
-                    title: Text('Connection Settings'),
-                    onTap: () {
-                      setState(() {
-                        this.currentScreen = 'connectionSettings';
-                      });
-                      Navigator.pop(context);
-                    },
-                  ),
-                ],
-              ),
-            )
-          : IconButton(
-              onPressed: () {
+      drawer: Drawer(
+        child: Column(
+          children: <Widget>[
+            ListTile(
+              title: Text('Connection Settings'),
+              onTap: () {
                 setState(() {
-                  this.currentScreen = 'start';
-                  Navigator.pop(context);
+                  this.currentScreen = 'connectionOptions';
                 });
+                Navigator.pop(context);
               },
-              icon: Icon(Icons.arrow_back)),
-      body: this.currentScreen == 'start' ? TalkingScreen() : Options(this.callback),
+            ),
+            ListTile(
+              title: Text('Recent Chats'),
+              onTap: () {
+                setState(() {
+                  this.currentScreen = 'recentChats';
+                });
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+      body: (() {
+        switch (this.currentScreen) {
+          case 'recentChats':
+            return RecentChats(this.callback);
+          case 'connectionOptions':
+            return Options(this.callback);
+          case 'talkingScreen':
+            return TalkingScreen();
+          default:
+            return RecentChats(this.callback);
+        }
+      })(),
     );
   }
 }
