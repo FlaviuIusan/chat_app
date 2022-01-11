@@ -19,6 +19,9 @@ class Message extends HiveObject {
   @HiveField(3)
   String text = '';
 
+  @HiveField(4)
+  List<String> alreadySendToIds = [];
+
   Message(this.idRecipient, this.idSender, this.time, this.text);
 
   factory Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);

@@ -21,13 +21,13 @@ class MessageAdapter extends TypeAdapter<Message> {
       fields[1] as String,
       fields[2] as DateTime,
       fields[3] as String,
-    );
+    )..alreadySendToIds = (fields[4] as List).cast<String>();
   }
 
   @override
   void write(BinaryWriter writer, Message obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.idRecipient)
       ..writeByte(1)
@@ -35,7 +35,9 @@ class MessageAdapter extends TypeAdapter<Message> {
       ..writeByte(2)
       ..write(obj.time)
       ..writeByte(3)
-      ..write(obj.text);
+      ..write(obj.text)
+      ..writeByte(4)
+      ..write(obj.alreadySendToIds);
   }
 
   @override
@@ -59,7 +61,9 @@ Message _$MessageFromJson(Map<String, dynamic> json) {
     json['idSender'] as String,
     DateTime.parse(json['time'] as String),
     json['text'] as String,
-  );
+  )..alreadySendToIds = (json['alreadySendToIds'] as List<dynamic>)
+      .map((e) => e as String)
+      .toList();
 }
 
 Map<String, dynamic> _$MessageToJson(Message instance) => <String, dynamic>{
@@ -67,4 +71,5 @@ Map<String, dynamic> _$MessageToJson(Message instance) => <String, dynamic>{
       'idSender': instance.idSender,
       'time': instance.time.toIso8601String(),
       'text': instance.text,
+      'alreadySendToIds': instance.alreadySendToIds,
     };

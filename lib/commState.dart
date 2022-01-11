@@ -103,41 +103,73 @@ class CommState with ChangeNotifier {
     return 1;
   }
 
-  void sendMessageToUser(String id, Message message) async {
-    String ipToSendTo = networkUsers[id]!.route[0].ip;
-    Socket? socketSendTcp;
-    bool haveSocket = false;
-    for (Socket socket in socketsSendTcp) {
-      String socketIp = socket.address.address;
-      if (socketIp.substring(0, socketIp.lastIndexOf('.')) == ipToSendTo.substring(0, ipToSendTo.lastIndexOf('.'))) {
-        socketSendTcp = socket;
-        haveSocket = true;
+  void sendMessageToUser(String id, Message message, {bool resending = false}) async {
+    if (id == "Everyone") {
+      List<String> networkUsersIdsToSend = [];
+      for (String networkUserId in networkUsers.keys) {
+        if (!message.alreadySendToIds.contains(networkUserId) && networkUserId != "Everyone") {
+          networkUsersIdsToSend.add(networkUserId);
+        }
+        message.alreadySendToIds.addAll(networkUsersIdsToSend);
+        message.alreadySendToIds.add(this.idMe);
+      }
+      for (String networkUserId in networkUsersIdsToSend) {
+        String ipToSendTo = networkUsers[networkUserId]!.route[0].ip;
+        Socket? socketSendTcp;
+        bool haveSocket = false;
+        for (Socket socket in socketsSendTcp) {
+          String socketIp = socket.address.address;
+          if (socketIp.substring(0, socketIp.lastIndexOf('.')) == ipToSendTo.substring(0, ipToSendTo.lastIndexOf('.'))) {
+            socketSendTcp = socket;
+            haveSocket = true;
+          }
+        }
+        if (haveSocket == false) {
+          int waiting = await connectToTcpServer(networkUserId);
+          socketSendTcp = socketsSendTcp.last;
+        }
+        String messageToSend = jsonEncode(message);
+        socketSendTcp?.write(messageToSend);
+        print("MESAJJJ TRIMIS--------------------------------------\n: " + "Pentru:" + message.idRecipient + "De la: " + message.idSender + messageToSend);
+      }
+    } else {
+      String ipToSendTo = networkUsers[id]!.route[0].ip;
+      Socket? socketSendTcp;
+      bool haveSocket = false;
+      for (Socket socket in socketsSendTcp) {
+        String socketIp = socket.address.address;
+        if (socketIp.substring(0, socketIp.lastIndexOf('.')) == ipToSendTo.substring(0, ipToSendTo.lastIndexOf('.'))) {
+          socketSendTcp = socket;
+          haveSocket = true;
+        }
+      }
+      if (haveSocket == false) {
+        int waiting = await connectToTcpServer(id);
+        socketSendTcp = socketsSendTcp.last;
+      }
+      String messageToSend = jsonEncode(message);
+      socketSendTcp?.write(messageToSend);
+
+      print("MESAJJJ TRIMIS--------------------------------------\n: " + "Pentru:" + message.idRecipient + "De la: " + message.idSender + messageToSend);
+    }
+
+    if (resending == false) {
+      var messagesDB = await Hive.openBox<Messages>("messages");
+      var messagesWith = messagesDB.get(message.idRecipient);
+      if (messagesWith == null) {
+        print("IS NULL");
+        messagesDB.put(message.idRecipient, Messages([message]));
+        messagesWith = messagesDB.get(message.idRecipient);
+        print(messagesWith?.messages.last.text);
+      } else {
+        messagesWith.messages.add(message);
+        messagesWith.save();
+        print("Not NULL");
+        messagesWith.messages.forEach((element) {
+          print(element.text);
+        });
       }
     }
-    if (haveSocket == false) {
-      int waiting = await connectToTcpServer(id);
-      socketSendTcp = socketsSendTcp.last;
-    }
-    String messageToSend = jsonEncode(message);
-    socketSendTcp?.write(messageToSend);
-
-    var messagesDB = await Hive.openBox<Messages>("messages");
-    var messagesWith = messagesDB.get(message.idRecipient);
-    if (messagesWith == null) {
-      print("IS NULL");
-      messagesDB.put(message.idRecipient, Messages([message]));
-      messagesWith = messagesDB.get(message.idRecipient);
-      print(messagesWith?.messages.last.text);
-    } else {
-      messagesWith.messages.add(message);
-      messagesWith.save();
-      print("Not NULL");
-      messagesWith.messages.forEach((element) {
-        print(element.text);
-      });
-    }
-
-    print("MESAJJJ TRIMIS--------------------------------------\n: " + "Pentru:" + message.idRecipient + "De la: " + message.idSender + messageToSend);
   }
 
   // void listenMessage() {
@@ -183,6 +215,24 @@ class CommState with ChangeNotifier {
               print(element.text);
             });
           }
+        } else if (messageReceived.idRecipient == "Everyone") {
+          print("MESAJJJ Pentru Everyone--------------------------------------\n: " + messageReceived.idRecipient);
+          var messagesDB = await Hive.openBox<Messages>("messages");
+          var messagesWith = messagesDB.get("Everyone");
+          if (messagesWith == null) {
+            print("RECEIVED IS NULL");
+            messagesDB.put("Everyone", Messages([messageReceived]));
+            messagesWith = messagesDB.get("Everyone");
+            print(messagesWith?.messages.last.text);
+          } else {
+            messagesWith.messages.add(messageReceived);
+            messagesWith.save();
+            print("RECEIVED Not NULL");
+            messagesWith.messages.forEach((element) {
+              print(element.text);
+            });
+          }
+          sendMessageToUser(messageReceived.idRecipient, messageReceived, resending: true);
         }
         //altfel redirectioneaza catre cine este adresat
         else {
@@ -196,6 +246,9 @@ class CommState with ChangeNotifier {
 
   void connectToMulticastGroup(String idManual) async {
     await Hive.openBox<Messages>("messages");
+    //adauga in lista send message to Everyone
+    networkUsers['Everyone'] = new UserRoute('everyone', []);
+    streamChangesToNetworkUsers.add("Everyone" + "A fost adaugat cu o ruta care nu exista pana acum");
     //listen cu un singur socket pe toate interfetele?
     //send trebuie pentru fiecare separat.
     //lock pentru android
