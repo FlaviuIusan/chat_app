@@ -20,7 +20,7 @@ class Message extends HiveObject {
   String text = '';
 
   @HiveField(4)
-  List<String> alreadySendToIds = [];
+  bool forEveryone = false;
 
   Message(this.idRecipient, this.idSender, this.time, this.text);
 

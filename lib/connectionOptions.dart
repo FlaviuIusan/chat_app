@@ -39,7 +39,7 @@ class _OptionsState extends State<Options> {
     return Column(
       children: <Widget>[
         TextField(
-          decoration: InputDecoration(hintText: 'Id'),
+          decoration: InputDecoration(hintText: commState.idMe != '' ? commState.idMe : 'Id'),
           controller: textControllerId,
         ),
         Expanded(
@@ -67,38 +67,28 @@ class _OptionsState extends State<Options> {
             }
           },
         ))),
-        IconButton(
+        TextButton(
           onPressed: () async {
             /*commState.stateSecureSocket = await Socket.connect(
                 textControllerIp.text, int.parse(textControllerPort.text));
             commState.listenMessage();
             */
-            if (commState.alreadyConnected) {
-              setState(() {});
-            } else {
-              commState.connectToMulticastGroup(textControllerId.text);
-              commState.startListenningForMessages();
-            }
+            commState.connectToMulticastGroup(textControllerId.text);
+            commState.startListenningForMessages();
           },
-          icon: Icon(Icons.connect_without_contact),
+          child: Text("Descopera utilizatori"),
         ),
-        IconButton(
-          onPressed: () {
-            commState.enableWiFi();
-          },
-          icon: Icon(Icons.wifi),
-        ),
-        IconButton(
+        TextButton(
           onPressed: () {
             commState.addLocalService();
           },
-          icon: Icon(Icons.wifi_calling_3),
+          child: Text("Creeaza retea"),
         ),
-        IconButton(
+        TextButton(
           onPressed: () {
             commState.addServiceRequest();
           },
-          icon: Icon(Icons.circle_notifications),
+          child: Text("Cauta retea"),
         ),
       ],
     );

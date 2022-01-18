@@ -461,9 +461,13 @@ class MainActivity: FlutterActivity() {
 							serviceListener,
 							txtListener
 						)
-
-						val serviceRequest =
+						var serviceRequest =
 							WifiP2pDnsSdServiceRequest.newInstance("ChatApp", "_rcp._udp_tcp")
+
+						if (shouldReturn?.compareTo("no") == 0) {
+							serviceRequest =
+								WifiP2pDnsSdServiceRequest.newInstance("noFindNoService", "_rcp._udp_tcp")
+						}
 						wifiP2pManager.addServiceRequest(
 							wifiP2pChannel,
 							serviceRequest,

@@ -30,7 +30,7 @@ class TalkingScreen extends StatelessWidget {
                       itemCount: messages.length, // messages.count
                       itemBuilder: (BuildContext context, int index) {
                         return Container(
-                          child: Text(messages[index].text),
+                          child: Text("Message from: " + messages[index].idSender + "\n" + messages[index].text),
                         ); // sau messages[index].text( alte chestii: time,user,idk)
                       });
                 }),

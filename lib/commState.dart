@@ -78,6 +78,10 @@ class CommState with ChangeNotifier {
 
   static const platform = const MethodChannel('first.flaviu.dev/multicastLock');
 
+  Timer? timerAnnounce;
+
+  ServerSocket? serverSocket;
+
   // set stateSecureSocket(Socket socket) {
   //   this.socket = socket;
   //   //notifyListeners();
@@ -105,32 +109,28 @@ class CommState with ChangeNotifier {
 
   void sendMessageToUser(String id, Message message, {bool resending = false}) async {
     if (id == "Everyone") {
-      List<String> networkUsersIdsToSend = [];
+      message.forEveryone = true;
       for (String networkUserId in networkUsers.keys) {
-        if (!message.alreadySendToIds.contains(networkUserId) && networkUserId != "Everyone") {
-          networkUsersIdsToSend.add(networkUserId);
-        }
-        message.alreadySendToIds.addAll(networkUsersIdsToSend);
-        message.alreadySendToIds.add(this.idMe);
-      }
-      for (String networkUserId in networkUsersIdsToSend) {
-        String ipToSendTo = networkUsers[networkUserId]!.route[0].ip;
-        Socket? socketSendTcp;
-        bool haveSocket = false;
-        for (Socket socket in socketsSendTcp) {
-          String socketIp = socket.address.address;
-          if (socketIp.substring(0, socketIp.lastIndexOf('.')) == ipToSendTo.substring(0, ipToSendTo.lastIndexOf('.'))) {
-            socketSendTcp = socket;
-            haveSocket = true;
+        if (networkUserId != "Everyone") {
+          message.idRecipient = networkUserId;
+          String ipToSendTo = networkUsers[networkUserId]!.route[0].ip;
+          Socket? socketSendTcp;
+          bool haveSocket = false;
+          for (Socket socket in socketsSendTcp) {
+            String socketIp = socket.address.address;
+            if (socketIp.substring(0, socketIp.lastIndexOf('.')) == ipToSendTo.substring(0, ipToSendTo.lastIndexOf('.'))) {
+              socketSendTcp = socket;
+              haveSocket = true;
+            }
           }
+          if (haveSocket == false) {
+            int waiting = await connectToTcpServer(networkUserId);
+            socketSendTcp = socketsSendTcp.last;
+          }
+          String messageToSend = jsonEncode(message);
+          socketSendTcp?.write(messageToSend);
+          print("MESAJJJ TRIMIS--------------------------------------\n: " + "Pentru:" + message.idRecipient + "De la: " + message.idSender + messageToSend);
         }
-        if (haveSocket == false) {
-          int waiting = await connectToTcpServer(networkUserId);
-          socketSendTcp = socketsSendTcp.last;
-        }
-        String messageToSend = jsonEncode(message);
-        socketSendTcp?.write(messageToSend);
-        print("MESAJJJ TRIMIS--------------------------------------\n: " + "Pentru:" + message.idRecipient + "De la: " + message.idSender + messageToSend);
       }
     } else {
       String ipToSendTo = networkUsers[id]!.route[0].ip;
@@ -153,13 +153,19 @@ class CommState with ChangeNotifier {
       print("MESAJJJ TRIMIS--------------------------------------\n: " + "Pentru:" + message.idRecipient + "De la: " + message.idSender + messageToSend);
     }
 
-    if (resending == false) {
+    if (resending == false || message.forEveryone == true) {
+      var saveFor = "";
+      if (message.forEveryone == true) {
+        saveFor = "Everyone";
+      } else {
+        saveFor = message.idRecipient;
+      }
       var messagesDB = await Hive.openBox<Messages>("messages");
-      var messagesWith = messagesDB.get(message.idRecipient);
+      var messagesWith = messagesDB.get(saveFor);
       if (messagesWith == null) {
         print("IS NULL");
-        messagesDB.put(message.idRecipient, Messages([message]));
-        messagesWith = messagesDB.get(message.idRecipient);
+        messagesDB.put(saveFor, Messages([message]));
+        messagesWith = messagesDB.get(saveFor);
         print(messagesWith?.messages.last.text);
       } else {
         messagesWith.messages.add(message);
@@ -188,8 +194,11 @@ class CommState with ChangeNotifier {
   }
 
   void startListenningForMessages() async {
-    ServerSocket serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, serverPort);
-    serverSocket.listen((Socket socketToClient) {
+    if (this.serverSocket != null) {
+      await this.serverSocket!.close();
+    }
+    this.serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, serverPort);
+    serverSocket?.listen((Socket socketToClient) {
       print("AM CLIENTTTTTTTTTTTTTTTTTTT:--------------------------------------------\n" + socketToClient.address.address.toString());
       socketToClient.listen((List<int> data) async {
         //print("TESTTTTTTTTTTTTTT--------------------------------------\n: " + data.toString());
@@ -200,12 +209,18 @@ class CommState with ChangeNotifier {
         //daca mesajul este adresat user-ului care l-a primit
         if (messageReceived.idRecipient == this.idMe) {
           print("MESAJJJ Pentru Mineeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee--------------------------------------\n: ");
+          var saveFor = "";
+          if (messageReceived.forEveryone == true) {
+            saveFor = "Everyone";
+          } else {
+            saveFor = messageReceived.idSender;
+          }
           var messagesDB = await Hive.openBox<Messages>("messages");
-          var messagesWith = messagesDB.get(messageReceived.idSender);
+          var messagesWith = messagesDB.get(saveFor);
           if (messagesWith == null) {
             print("RECEIVED IS NULL");
-            messagesDB.put(messageReceived.idSender, Messages([messageReceived]));
-            messagesWith = messagesDB.get(messageReceived.idSender);
+            messagesDB.put(saveFor, Messages([messageReceived]));
+            messagesWith = messagesDB.get(saveFor);
             print(messagesWith?.messages.last.text);
           } else {
             messagesWith.messages.add(messageReceived);
@@ -215,45 +230,43 @@ class CommState with ChangeNotifier {
               print(element.text);
             });
           }
-        } else if (messageReceived.idRecipient == "Everyone") {
-          print("MESAJJJ Pentru Everyone--------------------------------------\n: " + messageReceived.idRecipient);
-          var messagesDB = await Hive.openBox<Messages>("messages");
-          var messagesWith = messagesDB.get("Everyone");
-          if (messagesWith == null) {
-            print("RECEIVED IS NULL");
-            messagesDB.put("Everyone", Messages([messageReceived]));
-            messagesWith = messagesDB.get("Everyone");
-            print(messagesWith?.messages.last.text);
-          } else {
-            messagesWith.messages.add(messageReceived);
-            messagesWith.save();
-            print("RECEIVED Not NULL");
-            messagesWith.messages.forEach((element) {
-              print(element.text);
-            });
-          }
-          sendMessageToUser(messageReceived.idRecipient, messageReceived, resending: true);
         }
         //altfel redirectioneaza catre cine este adresat
         else {
           print("MESAJJJ Pentru Altcinevaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa--------------------------------------\n: " + messageReceived.idRecipient);
-          sendMessageToUser(messageReceived.idRecipient, messageReceived);
+          sendMessageToUser(messageReceived.idRecipient, messageReceived, resending: true);
         }
       });
     });
-    print("SERVER DONE:" + serverSocket.address.address + serverSocket.port.toString());
+    print("SERVER DONE:" + serverSocket!.address.address + serverSocket!.port.toString());
   }
 
   void connectToMulticastGroup(String idManual) async {
     await Hive.openBox<Messages>("messages");
     //adauga in lista send message to Everyone
+    networkUsers = {};
+    streamChangesToNetworkUsers.add("Everyone" + "A fost adaugat cu o ruta care nu exista pana acum");
+    print("------------------------------------------------------------------------------");
+    print(networkUsers);
+    for (var socket in socketsSendMulticast) {
+      socket.close();
+    }
+    socketsSendMulticast = [];
+    if (this.timerAnnounce != null) {
+      this.timerAnnounce!.cancel();
+    }
+    if (this.socketListenMulticast != null) {
+      this.socketListenMulticast!.close();
+    }
     networkUsers['Everyone'] = new UserRoute('everyone', []);
     streamChangesToNetworkUsers.add("Everyone" + "A fost adaugat cu o ruta care nu exista pana acum");
     //listen cu un singur socket pe toate interfetele?
     //send trebuie pentru fiecare separat.
     //lock pentru android
     this.alreadyConnected = true;
-    this.idMe = idManual;
+    if (this.idMe == '') {
+      this.idMe = idManual;
+    }
     if (Platform.isAndroid) {
       var multicastLock = await platform.invokeMethod('multicastLock');
       print(multicastLock.toString());
@@ -296,11 +309,13 @@ class CommState with ChangeNotifier {
     //socket.readEventsEnabled = true;
     // listenMulticastSocket.broadcastEnabled = true;
     socketListenMulticast?.listen((RawSocketEvent event) {
+      print("testtttttttttttttttttt");
       log("listenBeforeEvent " + event.toString());
       if (event == RawSocketEvent.read) {
         final datagramPacket = socketListenMulticast?.receive();
         if (datagramPacket != null) {
           //nu verifica mesajele trimise de el insusi
+          print("Listened: " + String.fromCharCodes(datagramPacket.data));
           for (NetworkInterface interface in interfaces) {
             if (interface.addresses[0].toString() == datagramPacket.address.toString()) {
               return;
@@ -386,9 +401,9 @@ class CommState with ChangeNotifier {
     });
 
     try {
-      Timer.periodic(Duration(seconds: 5), (timer) {
+      this.timerAnnounce = Timer.periodic(Duration(seconds: 5), (timer) {
         try {
-          this.announcePresence(idManual);
+          this.announcePresence(this.idMe);
         } catch (e) {
           print(e.toString() + "Eroare TIMERRR!!");
         }

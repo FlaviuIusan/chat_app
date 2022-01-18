@@ -21,7 +21,7 @@ class MessageAdapter extends TypeAdapter<Message> {
       fields[1] as String,
       fields[2] as DateTime,
       fields[3] as String,
-    )..alreadySendToIds = (fields[4] as List).cast<String>();
+    )..forEveryone = fields[4] as bool;
   }
 
   @override
@@ -37,7 +37,7 @@ class MessageAdapter extends TypeAdapter<Message> {
       ..writeByte(3)
       ..write(obj.text)
       ..writeByte(4)
-      ..write(obj.alreadySendToIds);
+      ..write(obj.forEveryone);
   }
 
   @override
@@ -61,9 +61,7 @@ Message _$MessageFromJson(Map<String, dynamic> json) {
     json['idSender'] as String,
     DateTime.parse(json['time'] as String),
     json['text'] as String,
-  )..alreadySendToIds = (json['alreadySendToIds'] as List<dynamic>)
-      .map((e) => e as String)
-      .toList();
+  )..forEveryone = json['forEveryone'] as bool;
 }
 
 Map<String, dynamic> _$MessageToJson(Message instance) => <String, dynamic>{
@@ -71,5 +69,5 @@ Map<String, dynamic> _$MessageToJson(Message instance) => <String, dynamic>{
       'idSender': instance.idSender,
       'time': instance.time.toIso8601String(),
       'text': instance.text,
-      'alreadySendToIds': instance.alreadySendToIds,
+      'forEveryone': instance.forEveryone,
     };

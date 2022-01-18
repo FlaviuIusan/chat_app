@@ -38,7 +38,7 @@ class RecentChats extends StatelessWidget {
                                   SizedBox(
                                     width: double.infinity,
                                     child: Text(
-                                      chats[index].key,
+                                      "Messages from: " + chats[index].key,
                                       textAlign: TextAlign.left,
                                     ),
                                   ),
@@ -46,7 +46,7 @@ class RecentChats extends StatelessWidget {
                                     width: double.infinity,
                                     child: Container(
                                       child: Text(
-                                        chats[index].messages.last.text.substring(0, chats[index].messages.last.text.length > 20 ? 20 : chats[index].messages.last.text.length),
+                                        "Last message: " + chats[index].messages.last.text.substring(0, chats[index].messages.last.text.length > 20 ? 20 : chats[index].messages.last.text.length),
                                         textAlign: TextAlign.left,
                                       ),
                                     ),
