@@ -107,7 +107,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    //final commState = Provider.of<CommState>(context);
+    final commState = Provider.of<CommState>(context);
     return Scaffold(
       appBar: AppBar(
         title: (() {
@@ -117,17 +117,46 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             case 'connectionOptions':
               return Text('Connection Options');
             case 'talkingScreen':
-              return Text('Chat');
+              return Row(children: <Widget>[
+                Container(
+                  width: 45,
+                  height: 45,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Color((int.parse(commState.idTalkTo, radix: 35) * 0xFFFFFF).toInt()).withOpacity(1.0)),
+                    borderRadius: BorderRadius.all(Radius.circular(35)),
+                    color: Color((int.parse(commState.idTalkTo, radix: 35) * 0xFFFFFF).toInt()).withOpacity(1.0),
+                  ),
+                  child: Text(
+                    commState.idTalkTo.substring(0, 2).toUpperCase(),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                  ),
+                  alignment: Alignment.center,
+                ),
+                SizedBox(width: 10.0),
+                Text(
+                  commState.idTalkTo,
+                ),
+              ]);
             default:
               return Text('Recent Chats');
           }
         })(),
+        toolbarHeight: MediaQuery.of(context).size.height * 0.09,
       ),
       drawer: Drawer(
         child: Column(
           children: <Widget>[
+            Container(
+              color: Colors.blue,
+              child: Text('Chat App', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: Colors.white)),
+              height: MediaQuery.of(context).size.height * 0.128,
+              width: MediaQuery.of(context).size.width,
+              alignment: Alignment(-1, 0.45),
+              padding: EdgeInsets.only(left: 16),
+            ),
             ListTile(
-              title: Text('Connection Settings'),
+              title: Text('Connection Options', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
+              leading: Icon(Icons.settings_outlined),
               onTap: () {
                 setState(() {
                   this.currentScreen = 'connectionOptions';
@@ -136,7 +165,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               },
             ),
             ListTile(
-              title: Text('Recent Chats'),
+              title: Text('Recent Chats', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
+              leading: Icon(Icons.message_outlined),
               onTap: () {
                 setState(() {
                   this.currentScreen = 'recentChats';

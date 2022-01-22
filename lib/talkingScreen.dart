@@ -14,10 +14,6 @@ class TalkingScreen extends StatelessWidget {
     final textEditing = TextEditingController();
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(32),
-          child: Text('Talking With(Id): ' + commState.idTalkTo),
-        ),
         Expanded(
           child: Container(
             child: ValueListenableBuilder(

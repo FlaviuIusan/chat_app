@@ -50,14 +50,60 @@ class _OptionsState extends State<Options> {
           itemBuilder: (BuildContext context, int index) {
             String key = commState.networkUsers.keys.elementAt(index);
             if (commState.networkUsers[key]!.destinationIp.compareTo('disconnected') != 0) {
-              return TextButton(
-                  onPressed: () {
-                    //commState.screen = 'start';
-                    this.widget.subscription?.cancel();
-                    commState.idTalkTo = key;
-                    this.widget.callback!('talkingScreen');
-                  },
-                  child: Text('UserId: ' + key + '  UserIp: ' + commState.networkUsers[key]!.destinationIp));
+              return Row(
+                children: <Widget>[
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        this.widget.subscription?.cancel();
+                        commState.idTalkTo = key;
+                        this.widget.callback!('talkingScreen');
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 15.0),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.only(
+                            topRight: Radius.circular(20.0),
+                            bottomRight: Radius.circular(20.0),
+                          ),
+                        ),
+                        child: Row(children: <Widget>[
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Color((int.parse(key, radix: 35) * 0xFFFFFF).toInt()).withOpacity(1.0)),
+                              borderRadius: BorderRadius.all(Radius.circular(35)),
+                              color: Color((int.parse(key, radix: 35) * 0xFFFFFF).toInt()).withOpacity(1.0),
+                            ),
+                            child: Text(
+                              key.substring(0, 2).toUpperCase(),
+                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                            alignment: Alignment.center,
+                          ),
+                          SizedBox(width: 10.0),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  key,
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 16.0,
+                                  ),
+                                ),
+                                SizedBox(height: 5.0),
+                              ],
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ],
+              );
             } else {
               return Container(
                 color: Colors.white,
@@ -75,6 +121,7 @@ class _OptionsState extends State<Options> {
             */
             commState.connectToMulticastGroup(textControllerId.text);
             commState.startListenningForMessages();
+            FocusManager.instance.primaryFocus?.unfocus();
           },
           child: Text("Descopera utilizatori"),
         ),
