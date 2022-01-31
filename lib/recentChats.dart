@@ -87,7 +87,9 @@ class RecentChats extends StatelessWidget {
                                     children: <Widget>[
                                       Text(
                                         DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day) == DateTime(chats[index].messages.last.time.year, chats[index].messages.last.time.month, chats[index].messages.last.time.day)
-                                            ? chats[index].messages.last.time.hour.toString()
+                                            ? (chats[index].messages.last.time.hour <= 9 ? '0' + chats[index].messages.last.time.hour.toString() : chats[index].messages.last.time.hour.toString()) +
+                                                ":" +
+                                                (chats[index].messages.last.time.minute <= 9 ? '0' + chats[index].messages.last.time.minute.toString() : chats[index].messages.last.time.minute.toString())
                                             : chats[index].messages.last.time.day.toString() + "/" + chats[index].messages.last.time.month.toString() + "/" + chats[index].messages.last.time.year.toString(),
                                         style: TextStyle(
                                           color: Colors.grey,

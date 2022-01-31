@@ -25,7 +25,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import java.util.*
+import java.net.InetAddress
 import kotlin.concurrent.thread
 import kotlin.reflect.KClass
 
@@ -523,6 +523,12 @@ class MainActivity: FlutterActivity() {
 					wifiConfig.SSID = String.format("\"%s\"", networkName)
 					wifiConfig.preSharedKey = String.format("\"%s\"", networkPassphrase)
 					wifiConfig.status = WifiConfiguration.Status.ENABLED
+//					val field = wifiConfig.javaClass.getField("autoJoinUseAggressiveJoinAttemptThreshold");
+//					field.set(wifiConfig, 100)
+					try {
+						val field = wifiConfig.javaClass.getField("noInternetAccessExpected")
+						field.set(wifiConfig, true)
+					} catch (e: Exception) { Log.d("WifiConf", "noInternetAccessExpected field not needed")}
 					val disconnect = wifiManager.disconnect()
 					Log.d(
 						"WIFIIIIICONF",
@@ -530,7 +536,6 @@ class MainActivity: FlutterActivity() {
 					)
 					val networkId = wifiManager.addNetwork(wifiConfig)
 					val succeed = wifiManager.enableNetwork(networkId, true)
-					val succeed2 = wifiManager.enableNetwork(networkId, true)
 					Log.d(
 						"connectToPeer",
 						"succeed VALUE: $succeed"
@@ -605,6 +610,16 @@ class MainActivity: FlutterActivity() {
 					}
 				}.start()
 			}
+			else if(call.method == "getBroadcastIp"){
+				val wifiManager = this.context.applicationContext.getSystemService(
+					WIFI_SERVICE
+				) as WifiManager
+				val dhcp = wifiManager.dhcpInfo
+				val broadcast = dhcp.ipAddress and dhcp.netmask or dhcp.netmask.inv()
+				val quads = ByteArray(4)
+				for (k in 0..3) quads[k] = (broadcast shr k * 8 and 0xFF).toByte()
+				result.success(quads)
+			}
 			else {
 				result.notImplemented()
 			}
@@ -616,7 +631,13 @@ class MainActivity: FlutterActivity() {
 		try{
 			this.wifi = this.context.applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
 			this.multicastLock = wifi.createMulticastLock("MyMulticastLock")
-			this.multicastLock.acquire()
+			if(!this.multicastLock.isHeld) {
+				this.multicastLock.acquire()
+			}
+			val wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "MyWifiLock")
+			if(!wifiLock.isHeld) {
+				wifiLock.acquire()
+			}
 		} catch(e: Exception) {
 			return e.toString()
 		}

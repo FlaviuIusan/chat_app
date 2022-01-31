@@ -44,6 +44,7 @@ class _TalkingScreenState extends State<TalkingScreen> {
                         child: Container(
                           decoration: BoxDecoration(
                             color: isMe ? Colors.lightGreen : Colors.white,
+                            border: Border.all(color: Colors.black38),
                             borderRadius: isMe
                                 ? BorderRadius.only(
                                     topLeft: Radius.circular(15.0),
@@ -75,7 +76,10 @@ class _TalkingScreenState extends State<TalkingScreen> {
                                         ),
                                         Text(
                                           DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day) == DateTime(messages[index].time.year, messages[index].time.month, messages[index].time.day)
-                                              ? " at " + messages[index].time.hour.toString()
+                                              ? " at " +
+                                                  (messages[index].time.hour <= 9 ? '0' + messages[index].time.hour.toString() : messages[index].time.hour.toString()) +
+                                                  ":" +
+                                                  (messages[index].time.minute <= 9 ? '0' + messages[index].time.minute.toString() : messages[index].time.minute.toString())
                                               : " at " + messages[index].time.day.toString() + "/" + messages[index].time.month.toString() + "/" + messages[index].time.year.toString(),
                                           style: TextStyle(
                                             color: Colors.grey,
